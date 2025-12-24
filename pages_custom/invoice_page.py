@@ -678,6 +678,52 @@ No cash refunds are provided under any circumstances."""
         st.session_state.warranty_shipping_cost = shipping_cost
 
     # ======================================================
+    #      DELIVERY & INSTALLATION
+    # ======================================================
+    st.markdown("<div class='section-title'>Delivery & Installation</div>", unsafe_allow_html=True)
+    
+    # Power provider dropdown - mapped by location
+    power_providers = {
+        "Abu Dhabi": "ADDC – Abu Dhabi",
+        "Dubai": "DEWA – Dubai",
+        "Sharjah": "SEWA – Sharjah",
+        "Ajman": "EWE – Ajman",
+        "Umm Al Quwain": "EWE – Umm Al Quwain",
+        "Ras Al Khaimah": "FEWA – Ras Al Khaimah",
+        "Fujairah": "EWE – Fujairah",
+    }
+    
+    if 'power_provider' not in st.session_state:
+        # Try to auto-select based on location
+        client_location = st.session_state.get('inv_client_location', '').strip()
+        default_provider = None
+        for location, provider in power_providers.items():
+            if location.lower() in client_location.lower():
+                default_provider = provider
+                break
+        st.session_state.power_provider = default_provider or "ADDC – Abu Dhabi"
+    
+    col_delivery = st.columns([2, 1])
+    
+    with col_delivery[0]:
+        power_provider = st.selectbox(
+            "Power Provider (excluded from installation scope):",
+            options=list(power_providers.values()),
+            index=list(power_providers.values()).index(st.session_state.power_provider) if st.session_state.power_provider in power_providers.values() else 0,
+            key="power_provider_select"
+        )
+        st.session_state.power_provider = power_provider
+    
+    with col_delivery[1]:
+        st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+        if st.button("🔄 Auto-detect", use_container_width=True, help="Auto-detect based on location"):
+            client_location = st.session_state.get('inv_client_location', '').strip()
+            for location, provider in power_providers.items():
+                if location.lower() in client_location.lower():
+                    st.session_state.power_provider = provider
+                    st.rerun()
+
+    # ======================================================
     #      SAVE + EXPORT WORD
     # ======================================================
     def generate_word_invoice(template, data):
@@ -780,6 +826,9 @@ No cash refunds are provided under any circumstances."""
             warranty_shipping_cost = st.session_state.get('warranty_shipping_cost', 100.0)
             warranty_html = warranty_text.format(shipping_cost=warranty_shipping_cost)
 
+            # Get power provider for delivery & installation
+            power_provider = st.session_state.get('power_provider', 'ADDC – Abu Dhabi')
+
             html_invoice = render_quotation_html({
                 'company_name': load_settings().get('company_name', 'Newton Smart Home'),
                 'quotation_number': invoice_no,
@@ -795,6 +844,7 @@ No cash refunds are provided under any circumstances."""
                 'balance_due': balance_due,
                 'payment_terms_html': payment_terms_html,
                 'warranty_html': warranty_html,
+                'power_provider': power_provider,
                 'bank_name': load_settings().get('bank_name', ''),
                 'bank_account': load_settings().get('bank_account', ''),
                 'bank_iban': load_settings().get('bank_iban', ''),
