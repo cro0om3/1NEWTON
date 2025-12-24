@@ -638,6 +638,46 @@ def invoice_app():
         st.rerun()
 
     # ======================================================
+    #      WARRANTY & LIABILITY
+    # ======================================================
+    st.markdown("<div class='section-title'>Warranty & Liability</div>", unsafe_allow_html=True)
+    
+    if 'warranty_shipping_cost' not in st.session_state:
+        st.session_state.warranty_shipping_cost = 100.0
+    
+    if 'warranty_text' not in st.session_state:
+        st.session_state.warranty_text = """Warranty is provided for manufacturing defects only. This does not cover:
+• Wear and tear, misuse, or improper maintenance.
+• External damages or influences beyond our control.
+• Any third-party modifications to hardware or software.
+
+Warranty claims must be submitted within two months of defect detection.
+Clients are responsible for shipping costs (AED {shipping_cost}) related to warranty claims.
+No cash refunds are provided under any circumstances."""
+    
+    col_warranty = st.columns([2, 1])
+    
+    with col_warranty[0]:
+        warranty_text = st.text_area(
+            "Warranty & Liability Text:",
+            value=st.session_state.warranty_text,
+            height=150,
+            help="Use {shipping_cost} placeholder for dynamic cost",
+            key="warranty_text_input"
+        )
+        st.session_state.warranty_text = warranty_text
+    
+    with col_warranty[1]:
+        shipping_cost = st.number_input(
+            "Shipping Cost (AED):",
+            min_value=0.0,
+            value=st.session_state.warranty_shipping_cost,
+            step=10.0,
+            key="warranty_cost_input"
+        )
+        st.session_state.warranty_shipping_cost = shipping_cost
+
+    # ======================================================
     #      SAVE + EXPORT WORD
     # ======================================================
     def generate_word_invoice(template, data):
@@ -735,6 +775,11 @@ def invoice_app():
                     if term.get('percent') and term.get('description'):
                         payment_terms_html += f"<li>{term.get('percent'):.0f}% {term.get('description')}</li>"
 
+            # Build warranty HTML (format with dynamic shipping cost)
+            warranty_text = st.session_state.get('warranty_text', '')
+            warranty_shipping_cost = st.session_state.get('warranty_shipping_cost', 100.0)
+            warranty_html = warranty_text.format(shipping_cost=warranty_shipping_cost)
+
             html_invoice = render_quotation_html({
                 'company_name': load_settings().get('company_name', 'Newton Smart Home'),
                 'quotation_number': invoice_no,
@@ -749,6 +794,7 @@ def invoice_app():
                 'previously_paid': previously_paid,
                 'balance_due': balance_due,
                 'payment_terms_html': payment_terms_html,
+                'warranty_html': warranty_html,
                 'bank_name': load_settings().get('bank_name', ''),
                 'bank_account': load_settings().get('bank_account', ''),
                 'bank_iban': load_settings().get('bank_iban', ''),
