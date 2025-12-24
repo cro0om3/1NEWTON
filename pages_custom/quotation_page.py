@@ -339,6 +339,7 @@ def quotation_app():
                                         'valid_until': '',
                                         'status': 'Pending Approval',
                                         'client_name': client_name,
+                                        'mobile': st.session_state.get('quo_phone', ''),
                                         'client_company': '',
                                         'client_address': client_location,
                                         'client_city': '',
@@ -364,23 +365,21 @@ def quotation_app():
                                     html_path = out_dir / f"Quotation_{client_name}_{quote_no}.html"
                                     with open(html_path, 'w', encoding='utf-8') as fh:
                                         fh.write(html_content)
-                                except Exception as _e:
-                                    st.error(f"Failed to prepare HTML for headless export: {_e}")
+                                except Exception as e:
+                                    st.error(f"❌ Unable to prepare HTML: {e}")
 
-                                # Start background thread that runs converter and writes a status file next to HTML
-                                if html_path:
-                                    status_path = html_path.with_suffix('.status.json')
-                                    # Remove any previous status
-                                    try:
-                                        if status_path.exists():
-                                            status_path.unlink()
-                                    except Exception:
-                                        pass
-                                    vw = os.environ.get('PLAYWRIGHT_PDF_WIDTH')
-                                    vh = os.environ.get('PLAYWRIGHT_PDF_HEIGHT')
-                                    t = threading.Thread(target=_run_converter_background, args=(str(html_path), str(status_path), vw, vh), daemon=True)
-                                    t.start()
-                                    st.success('Headless conversion started in background. Click "Refresh status" to update.')
+                                status_path = html_path.with_suffix('.status.json')
+                                # Remove any previous status
+                                try:
+                                    if status_path.exists():
+                                        status_path.unlink()
+                                except Exception:
+                                    pass
+                                vw = os.environ.get('PLAYWRIGHT_PDF_WIDTH')
+                                vh = os.environ.get('PLAYWRIGHT_PDF_HEIGHT')
+                                t = threading.Thread(target=_run_converter_background, args=(str(html_path), str(status_path), vw, vh), daemon=True)
+                                t.start()
+                                st.success('Headless conversion started in background. Click "Refresh status" to update.')
 
                             # Status area and refresh
                             try:
@@ -414,6 +413,31 @@ def quotation_app():
                                 pass
                         except Exception as e:
                             st.error(f'Export (headless) unavailable: {e}')
+
+    # Quotation summary inputs (Client name, Quotation No, Location, Mobile, Prepared/Approved)
+    if 'quo_client_name' not in st.session_state:
+        st.session_state['quo_client_name'] = ''
+    if 'quo_phone' not in st.session_state:
+        st.session_state['quo_phone'] = ''
+    if 'quo_loc' not in st.session_state:
+        st.session_state['quo_loc'] = uae_locations[0] if uae_locations else ''
+    if 'quo_no' not in st.session_state:
+        st.session_state['quo_no'] = datetime.today().strftime('QUO-%Y%m%d-001')
+    if 'quo_prepared_by' not in st.session_state:
+        st.session_state['quo_prepared_by'] = ''
+    if 'quo_approved_by' not in st.session_state:
+        st.session_state['quo_approved_by'] = ''
+
+    st.markdown('<div class="section-title">Quotation Summary</div>', unsafe_allow_html=True)
+    ql, qr = st.columns([1,1])
+    with ql:
+        st.text_input("Client Name", value=st.session_state.get('quo_client_name', ''), key='quo_client_name', help='Client name used in exports')
+        st.selectbox("Project Location (UAE)", uae_locations, index=uae_locations.index(st.session_state['quo_loc']) if st.session_state['quo_loc'] in uae_locations else 0, key='quo_loc')
+        st.text_input("Mobile Number", value=st.session_state.get('quo_phone', ''), placeholder="050xxxxxxx", key='quo_phone')
+    with qr:
+        st.text_input("Quotation No", value=st.session_state.get('quo_no', ''), key='quo_no')
+        st.text_input("Prepared By", value=st.session_state.get('quo_prepared_by', ''), key='quo_prepared_by')
+        st.text_input("Approved By", value=st.session_state.get('quo_approved_by', ''), key='quo_approved_by')
 
     st.session_state.num_entries = 1
 
@@ -619,7 +643,22 @@ def quotation_app():
     # EXPORT HELPERS (on-click only)
     # =========================
     def generate_word_file(data: dict) -> BytesIO:
-        doc = Document("data/quotation_template.docx")
+        # Validate environment and template first
+        if not HAVE_PYDOX:
+            raise RuntimeError("python-docx is not installed; Word export unavailable.")
+        tpl_path = Path("data/quotation_template.docx")
+        if not tpl_path.exists():
+            raise FileNotFoundError("Quotation Word template not found at data/quotation_template.docx")
+        try:
+            from utils.template_validator import validate_template, format_mismatch_message
+            missing, extra = validate_template(tpl_path, data)
+            if missing or extra:
+                raise ValueError(f"Template placeholders mismatch for {tpl_path.name}: {format_mismatch_message(missing, extra)}")
+        except Exception:
+            # Propagate to caller to be handled and shown in UI
+            raise
+
+        doc = Document(str(tpl_path))
 
         # قراءة أبعاد الصور من الإعدادات (سم)
         _s = load_settings()
@@ -743,6 +782,7 @@ def quotation_app():
             'valid_until': '',
             'status': 'Pending Approval',
             'client_name': data.get('client_name', ''),
+            'mobile': st.session_state.get('quo_phone', ''),
             'client_company': '',
             'client_address': data.get('client_location', ''),
             'client_city': '',
@@ -838,8 +878,8 @@ def quotation_app():
     phone_raw = st.session_state.get('quo_phone', '')
     client_phone = phone_raw
     _s = load_settings()
-    prepared_by = _s.get('default_prepared_by', '')
-    approved_by = _s.get('default_approved_by', '')
+    prepared_by = st.session_state.get('quo_prepared_by', _s.get('default_prepared_by', ''))
+    approved_by = st.session_state.get('quo_approved_by', _s.get('default_approved_by', ''))
 
     data_to_fill = {
         "{{client_name}}": client_name,
@@ -1066,6 +1106,7 @@ def quotation_app():
                     'valid_until': '',
                     'status': 'Pending Approval',
                     'client_name': client_name,
+                    'mobile': st.session_state.get('quo_phone', ''),
                     'client_company': '',
                     'client_address': client_location,
                     'client_city': '',
@@ -1132,6 +1173,7 @@ def quotation_app():
             'valid_until': '',
             'status': 'Pending Approval',
             'client_name': client_name,
+            'mobile': st.session_state.get('quo_phone', ''),
             'client_company': '',
             'client_address': client_location,
             'client_city': '',

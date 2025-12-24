@@ -8,9 +8,17 @@ from string import Template
 import pandas as pd
 import streamlit as st
 from PIL import Image
-from docx import Document
-from docx.shared import Pt, Cm
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+HAVE_PYDOX = True
+try:
+    from docx import Document
+    from docx.shared import Pt, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+except Exception:
+    HAVE_PYDOX = False
+    Document = None
+    Pt = None
+    Cm = None
+    WD_ALIGN_PARAGRAPH = None
 
 from utils.settings import load_settings
 try:
@@ -267,7 +275,24 @@ def insert_product_card(doc: Document, row: pd.Series, width_cm: float, height_c
 
 
 def build_word_cards_document(products_df: pd.DataFrame) -> BytesIO:
-    doc = Document("data/catalog_template.docx")
+    if not HAVE_PYDOX:
+        raise RuntimeError("python-docx is not installed; catalog Word export unavailable.")
+    tpl = Path("data/catalog_template.docx")
+    if not tpl.exists():
+        raise FileNotFoundError("Catalog Word template not found at data/catalog_template.docx")
+    try:
+        from utils.template_validator import validate_template, format_mismatch_message
+        missing, extra = validate_template(tpl, {})
+        # For the product catalog template we expect no special top-level placeholders,
+        # but still validate that replacements (none) don't contradict template usage.
+        if missing:
+            # If template expects keys we don't have, report clearly instead of failing silently
+            raise ValueError(f"Catalog template placeholders missing: {format_mismatch_message(missing, extra)}")
+    except Exception:
+        # Propagate to caller for UI handling
+        raise
+
+    doc = Document(str(tpl))
     width_cm = float(load_settings().get("quote_product_image_width_cm", 3.49))
     height_cm = float(load_settings().get("quote_product_image_height_cm", 1.5))
 

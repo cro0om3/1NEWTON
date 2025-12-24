@@ -6,6 +6,7 @@ import os
 import base64
 import mimetypes
 from utils.image_utils import ensure_data_url
+from utils.template_validator import validate_template, format_mismatch_message
 
 
 def render_quotation_html(context: Dict[str, Any], template_name: str = "newton_quotation_A4.html") -> str:
@@ -23,6 +24,11 @@ def render_quotation_html(context: Dict[str, Any], template_name: str = "newton_
         loader=FileSystemLoader(str(templates_dir)),
         autoescape=select_autoescape(["html", "xml"]),
     )
+
+    # NOTE: Template validation is performed after we normalize the context
+    # (see below). We intentionally avoid validating here because callers may
+    # provide keys under alternate names (e.g. `date` / `customer`) which we
+    # will map into the template's expected top-level keys.
 
     # Add a simple currency filter
     def _currency(value, symbol="AED", sep=","):
@@ -106,6 +112,24 @@ def render_quotation_html(context: Dict[str, Any], template_name: str = "newton_
     context = dict(context)
     context['items'] = normalized
 
+    # Normalize common top-level key aliases so callers with different key names
+    # still validate against templates that expect specific identifiers.
+    # Examples: tests use `date`/`customer`, templates expect `quotation_date`/
+    # `client_name`/`mobile`.
+    client_obj = context.get('client') or context.get('customer') or {}
+    context['quotation_date'] = context.get('quotation_date') or context.get('date', '')
+    context['quotation_number'] = context.get('quotation_number') or context.get('quote_no') or context.get('number', '')
+    if isinstance(client_obj, dict):
+        context['client_name'] = context.get('client_name') or client_obj.get('name') or client_obj.get('client_name') or ''
+        context['mobile'] = context.get('mobile') or context.get('phone') or client_obj.get('phone') or ''
+        context['project_location'] = context.get('project_location') or context.get('client_address') or client_obj.get('address') or ''
+    else:
+        context['client_name'] = context.get('client_name') or (str(client_obj) if client_obj else '')
+        context['mobile'] = context.get('mobile') or context.get('phone', '')
+        context['project_location'] = context.get('project_location') or context.get('client_address', '')
+    context['project_scope'] = context.get('project_scope') or context.get('project_title') or context.get('project_notes', '') or ''
+    context['valid_until'] = context.get('valid_until') or ''
+
     # Compute subtotal if not provided: sum of item totals
     if 'subtotal' not in context or context.get('subtotal') in (None, ''):
         try:
@@ -128,6 +152,18 @@ def render_quotation_html(context: Dict[str, Any], template_name: str = "newton_
         except Exception:
             subtotal_val = 0
         context['total_amount'] = subtotal_val + inst
+
+    # Now validate template placeholders against the prepared context so we can
+    # surface clear mismatches while allowing callers to supply common aliases.
+    try:
+        tpl_path = templates_dir / template_name
+        missing, extra = validate_template(tpl_path, context)
+        # Be permissive about extra keys (callers often pass more data than a
+        # template needs). Only fail when required placeholders are missing.
+        if missing:
+            raise ValueError(f"Template placeholders mismatch for {template_name}: {format_mismatch_message(missing, extra)}")
+    except Exception:
+        raise
 
     html = template.render(**context)
     return html

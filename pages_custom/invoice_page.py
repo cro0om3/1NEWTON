@@ -638,6 +638,11 @@ def invoice_app():
                 }
                 norm_items.append(item)
 
+            # Calculate balance due: total - down_payment - previously_paid
+            down_payment = float(st.session_state.get('inv_down_payment', 0.0) or 0.0)
+            previously_paid = float(st.session_state.get('inv_previously_paid', 0.0) or 0.0)
+            balance_due = grand_total - down_payment - previously_paid
+
             html_invoice = render_quotation_html({
                 'company_name': load_settings().get('company_name', 'Newton Smart Home'),
                 'quotation_number': invoice_no,
@@ -648,6 +653,9 @@ def invoice_app():
                 'subtotal': product_total,
                 'Installation': installation_cost,
                 'total_amount': grand_total,
+                'down_payment': down_payment,
+                'previously_paid': previously_paid,
+                'balance_due': balance_due,
                 'bank_name': load_settings().get('bank_name', ''),
                 'bank_account': load_settings().get('bank_account', ''),
                 'bank_iban': load_settings().get('bank_iban', ''),
