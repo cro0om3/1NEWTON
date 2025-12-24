@@ -661,6 +661,18 @@ def system_config_section(user, user_name):
         
         st.markdown('<div class="spacing-md"></div>', unsafe_allow_html=True)
         
+        st.markdown('<div class="crm-subsection">AI Integration (Optional)</div>', unsafe_allow_html=True)
+        openai_key = st.text_input(
+            "OpenAI API Key",
+            value=settings.get("openai_api_key", ""),
+            type="password",
+            placeholder="sk-...",
+            help="Enter your OpenAI API key for auto-generating project descriptions. Leave empty to disable."
+        )
+        st.caption("🔐 Your API key is stored securely. Used only for project description generation.")
+        
+        st.markdown('<div class="spacing-md"></div>', unsafe_allow_html=True)
+        
         st.markdown('<div class="crm-subsection">Product Image Sizes</div>', unsafe_allow_html=True)
         g1, g2 = st.columns(2)
         with g1:
@@ -684,6 +696,7 @@ def system_config_section(user, user_name):
             "contact_email": email,
             "contact_phone": phone,
             "currency": currency,
+            "openai_api_key": openai_key,
             "ui_product_image_width_px": int(ui_w),
             "ui_product_image_height_px": int(ui_h),
             "quote_product_image_width_cm": float(q_w),

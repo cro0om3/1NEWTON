@@ -392,46 +392,6 @@ def invoice_app():
         ])
 
     st.markdown("---")
-    st.markdown("<div class='section-title'>📝 Work Details</div>", unsafe_allow_html=True)
-    
-    # Initialize work detail fields in session state
-    if 'work_tech_name' not in st.session_state:
-        st.session_state.work_tech_name = ""
-    if 'work_tech_phone' not in st.session_state:
-        st.session_state.work_tech_phone = ""
-    if 'work_description' not in st.session_state:
-        st.session_state.work_description = ""
-    
-    col_work_1, col_work_2 = st.columns(2)
-    
-    with col_work_1:
-        tech_name = st.text_input(
-            "Technician/Contact Name",
-            value=st.session_state.work_tech_name,
-            placeholder="e.g., فهد الحمادي",
-            key="work_tech_name_input"
-        )
-        st.session_state.work_tech_name = tech_name
-    
-    with col_work_2:
-        tech_phone = st.text_input(
-            "Contact Phone",
-            value=st.session_state.work_tech_phone,
-            placeholder="e.g., 0502992932",
-            key="work_tech_phone_input"
-        )
-        st.session_state.work_tech_phone = tech_phone
-    
-    work_desc = st.text_area(
-        "Work Description / Installation Requirements",
-        value=st.session_state.work_description,
-        placeholder="e.g., لايت سويتش سمارت اي سي يكون مدمج مع جات جي بيتي",
-        height=80,
-        key="work_desc_input"
-    )
-    st.session_state.work_description = work_desc
-
-    st.markdown("---")
     st.markdown("<div class='section-title'>Add Product</div>", unsafe_allow_html=True)
 
     st.markdown("""
@@ -718,6 +678,53 @@ No cash refunds are provided under any circumstances."""
         st.session_state.warranty_shipping_cost = shipping_cost
 
     # ======================================================
+    #      PROJECT DETAILS
+    # ======================================================
+    st.markdown("<div class='section-title'>Project Details</div>", unsafe_allow_html=True)
+    
+    if 'project_title' not in st.session_state:
+        st.session_state.project_title = ""
+    if 'project_description' not in st.session_state:
+        st.session_state.project_description = ""
+    
+    col_project = st.columns([2, 1])
+    
+    with col_project[0]:
+        project_title = st.text_input(
+            "Project Title:",
+            value=st.session_state.project_title,
+            placeholder="e.g., Smart Home Setup - Villa Al Manara",
+            key="project_title_input"
+        )
+        st.session_state.project_title = project_title
+    
+    with col_project[1]:
+        st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+        api_key = load_settings().get('openai_api_key', '')
+        if api_key and api_key.strip():
+            if st.button("✨ AI Generate", use_container_width=True, help="Auto-generate description using ChatGPT"):
+                from utils.openai_utils import generate_project_description
+                raw_items = df_to_list(st.session_state.get('invoice_table', pd.DataFrame()))
+                generated = generate_project_description(raw_items, api_key)
+                if generated:
+                    st.session_state.project_description = generated
+                    st.success("✓ Description generated!")
+                    st.rerun()
+                else:
+                    st.warning("Could not generate description. Check API key.")
+        else:
+            st.caption("💡 Add OpenAI API key in Settings to enable AI generation")
+    
+    project_description = st.text_area(
+        "Project Description:",
+        value=st.session_state.project_description,
+        placeholder="Describe the project scope, devices to be installed, and work to be performed...",
+        height=120,
+        key="project_desc_input"
+    )
+    st.session_state.project_description = project_description
+
+    # ======================================================
     #      DELIVERY & INSTALLATION
     # ======================================================
     st.markdown("<div class='section-title'>Delivery & Installation</div>", unsafe_allow_html=True)
@@ -868,6 +875,10 @@ No cash refunds are provided under any circumstances."""
 
             # Get power provider for delivery & installation
             power_provider = st.session_state.get('power_provider', 'ADDC – Abu Dhabi')
+            
+            # Get project details
+            project_title = st.session_state.get('project_title', '')
+            project_description = st.session_state.get('project_description', '')
 
             html_invoice = render_quotation_html({
                 'company_name': load_settings().get('company_name', 'Newton Smart Home'),
@@ -881,6 +892,8 @@ No cash refunds are provided under any circumstances."""
                 'total_amount': grand_total,
                 'down_payment': down_payment,
                 'previously_paid': previously_paid,
+                'project_title': project_title,
+                'project_description': project_description,
                 'balance_due': balance_due,
                 'payment_terms_html': payment_terms_html,
                 'warranty_html': warranty_html,

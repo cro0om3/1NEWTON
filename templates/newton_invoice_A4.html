@@ -600,10 +600,14 @@
                     </div>
                     <div class="bill-card">
                         <div class="bill-label">Project Details</div>
-                        <div class="bill-name">Project Title</div>
+                        {% if project_title %}
+                        <div class="bill-name">{{ project_title }}</div>
+                        {% endif %}
+                        {% if project_description %}
                         <div class="bill-text">
-                            { project_scope }.
+                            {{ project_description }}
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
