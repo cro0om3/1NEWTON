@@ -1,0 +1,6 @@
+# Ignore temporary Excel lock files
+data/~$*
+
+# You can uncomment the following lines to avoid committing heavy generated assets
+# data/product_images/
+# data/exports/
