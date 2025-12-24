@@ -700,20 +700,26 @@ No cash refunds are provided under any circumstances."""
     
     with col_project[1]:
         st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
-        api_key = load_settings().get('openai_api_key', '')
-        if api_key and api_key.strip():
+        # Load API key from settings
+        settings = load_settings()
+        api_key = settings.get('openai_api_key', '').strip() if settings.get('openai_api_key') else ''
+        
+        if api_key:
             if st.button("✨ AI Generate", use_container_width=True, help="Auto-generate description using ChatGPT"):
                 from utils.openai_utils import generate_project_description
                 raw_items = df_to_list(st.session_state.get('invoice_table', pd.DataFrame()))
-                generated = generate_project_description(raw_items, api_key)
-                if generated:
-                    st.session_state.project_description = generated
-                    st.success("✓ Description generated!")
-                    st.rerun()
-                else:
-                    st.warning("Could not generate description. Check API key.")
+                try:
+                    generated = generate_project_description(raw_items, api_key)
+                    if generated:
+                        st.session_state.project_description = generated
+                        st.success("✓ Description generated!")
+                        st.rerun()
+                    else:
+                        st.warning("Could not generate description. Check your OpenAI API key or product list.")
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
         else:
-            st.caption("💡 Add OpenAI API key in Settings to enable AI generation")
+            st.info("💡 Add OpenAI API key in Settings to enable AI generation")
     
     project_description = st.text_area(
         "Project Description:",

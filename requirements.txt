@@ -12,3 +12,4 @@ streamlit-cropper
 aspose-words
 weasyprint
 Jinja2
+openai
