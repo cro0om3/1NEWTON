@@ -1,6 +1,9 @@
 # Ignore temporary Excel lock files
 data/~$*
 
+# Firebase credentials (never commit!)
+data/firebase_credentials.json
+
 # You can uncomment the following lines to avoid committing heavy generated assets
 # data/product_images/
 # data/exports/
