@@ -6,6 +6,10 @@ try:
     from utils import db as _db
 except Exception:
     _db = None
+try:
+    from utils.firebase_utils import save_customer_to_firebase
+except Exception:
+    save_customer_to_firebase = None
 
 
 # ===== Excel Auto-Creation (as specified) =====
@@ -169,6 +173,17 @@ def save_customers(df: pd.DataFrame):
                         _db.db_execute('INSERT INTO customers(name, phone, email, address) VALUES (%s, %s, %s, %s)', (name, phone, email, address))
                     except Exception:
                         pass
+            
+            # حفظ في Firebase
+            if save_customer_to_firebase is not None:
+                try:
+                    for _, row in df.iterrows():
+                        customer_dict = row.to_dict()
+                        customer_dict = {k: (None if pd.isna(v) else v) for k, v in customer_dict.items()}
+                        save_customer_to_firebase(customer_dict)
+                except Exception as e:
+                    print(f"⚠️ تحذير Firebase: {str(e)}")
+            
             # After attempting DB sync, still write Excel to preserve full app fields
             df.to_excel(CUSTOMERS_XLSX, index=False)
             return

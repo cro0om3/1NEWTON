@@ -34,6 +34,10 @@ try:
 except Exception:
     _db = None
 from utils.image_utils import ensure_data_url
+try:
+    from utils.firebase_utils import save_quotation_to_firebase
+except Exception:
+    save_quotation_to_firebase = None
  # تم حذف الاستيراد غير المستخدم requests
 
 def proper_case(text):
@@ -925,7 +929,7 @@ def quotation_app():
                 else:
                     seq = 1
                 base_id = f"{today_id}-{str(seq).zfill(3)}"
-                save_record({
+                quotation_data = {
                     "base_id": base_id,
                     "date": datetime.today().strftime('%Y-%m-%d'),
                     "type": "q",
@@ -935,7 +939,16 @@ def quotation_app():
                     "phone": phone_raw,
                     "location": client_location,
                     "note": ""
-                })
+                }
+                save_record(quotation_data)
+                
+                # حفظ في Firebase
+                if save_quotation_to_firebase is not None:
+                    try:
+                        save_quotation_to_firebase(quotation_data)
+                    except Exception as e:
+                        print(f"⚠️ تحذير Firebase: {str(e)}")
+                
                 upsert_customer_from_quotation(client_name, phone_raw, client_location)
                 # Attempt to persist quotation and items to DB (non-intrusive)
                 if _db is not None:

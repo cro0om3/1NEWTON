@@ -26,6 +26,10 @@ try:
 except Exception:
     _db = None
 from utils.image_utils import ensure_data_url
+try:
+    from utils.firebase_utils import save_product_to_firebase
+except Exception:
+    save_product_to_firebase = None
 
 
 # ==========================================
@@ -89,6 +93,19 @@ def save_products(df: pd.DataFrame):
         if col not in df.columns:
             df[col] = None
     df = df[["Device", "Description", "UnitPrice", "Warranty", "ImageBase64", "ImagePath"]]
+    
+    # حفظ في Firebase
+    if save_product_to_firebase is not None:
+        try:
+            for _, row in df.iterrows():
+                device_val = row.get("Device")
+                if device_val and str(device_val).strip():
+                    product_dict = row.to_dict()
+                    product_dict = {k: (None if pd.isna(v) else v) for k, v in product_dict.items()}
+                    save_product_to_firebase(product_dict)
+        except Exception as e:
+            print(f"⚠️ تحذير Firebase: {str(e)}")
+    
     if _db is not None:
         try:
             existing_rows = []

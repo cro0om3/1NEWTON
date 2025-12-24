@@ -13,3 +13,4 @@ aspose-words
 weasyprint
 Jinja2
 openai
+firebase-admin

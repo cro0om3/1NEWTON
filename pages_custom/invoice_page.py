@@ -12,6 +12,10 @@ try:
 except Exception:
     _db = None
 from utils.image_utils import ensure_data_url
+try:
+    from utils.firebase_utils import save_invoice_to_firebase
+except Exception:
+    save_invoice_to_firebase = None
 
 
 def proper_case(text):
@@ -125,6 +129,17 @@ def invoice_app():
                         continue
         if {"type", "number"}.issubset(df.columns):
             df = df.drop_duplicates(subset=["type", "number"], keep="last")
+        
+        # حفظ في Firebase
+        if save_invoice_to_firebase is not None:
+            try:
+                for _, row in df.iterrows():
+                    record_dict = row.to_dict()
+                    record_dict = {k: (None if pd.isna(v) else v) for k, v in record_dict.items()}
+                    save_invoice_to_firebase(record_dict)
+            except Exception as e:
+                print(f"⚠️ تحذير Firebase: {str(e)}")
+        
         df.to_excel("data/records.xlsx", index=False)
 
     # ---- Customers helpers (auto add/update) ----

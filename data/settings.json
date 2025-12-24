@@ -8,5 +8,7 @@
   "ui_product_image_width_px": 350,
   "ui_product_image_height_px": 195,
   "quote_product_image_width_cm": 3.49,
-  "quote_product_image_height_cm": 1.5
+  "quote_product_image_height_cm": 1.5,
+  "openai_api_key": "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",
+  "ui_accent": "winter"
 }
