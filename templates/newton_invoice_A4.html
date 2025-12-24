@@ -573,12 +573,12 @@
                 </div>
                 <table class="meta-table">
                     <tr>
-                        <td class="label">Quotation No.</td>
-                        <td class="value">{ quotation_number }</td>
+                        <td class="label">Invoice No.</td>
+                        <td class="value">{{ quotation_number }}</td>
                     </tr>
                     <tr>
                         <td class="label">Date</td>
-                        <td class="value">{ quotation_date }</td>
+                        <td class="value">{{ quotation_date }}</td>
                     </tr>
                     <tr>
                         <td class="label">Status</td>
@@ -683,10 +683,6 @@
                         <div class="totals-row label">
                             <span>Discount</span>
                             <span class="value">{{ (discount | default(0)) | currency }}</span>
-                        </div>
-                        <div class="totals-row label">
-                            <span>VAT</span>
-                            <span class="value">{{ (vat | default(0)) | currency }}</span>
                         </div>
                         <div class="totals-row total">
                             <span>Total Invoice Amount</span>
