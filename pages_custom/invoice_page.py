@@ -554,6 +554,90 @@ def invoice_app():
             st.session_state["disc_percent_inv_value"] = discount_percent
 
     # ======================================================
+    #      PAYMENT TERMS
+    # ======================================================
+    st.markdown("---")
+    st.markdown("<div class='section-title'>Payment Terms</div>", unsafe_allow_html=True)
+    
+    # Initialize session state for payment terms if not exists
+    if 'payment_terms_count' not in st.session_state:
+        st.session_state.payment_terms_count = 2
+    if 'payment_terms' not in st.session_state:
+        st.session_state.payment_terms = [
+            {'percent': 30, 'description': 'upon contract signing, covering smart home infrastructure works including cabling, wiring, point preparation, and technical layouts.'},
+            {'percent': 70, 'description': 'upon supply of smart home devices, including installation, system programming, configuration, testing, and commissioning.'},
+        ]
+    
+    # Quick preset buttons
+    col_presets = st.columns(3)
+    with col_presets[0]:
+        if st.button("📋 Preset: 30-70", use_container_width=True):
+            st.session_state.payment_terms_count = 2
+            st.session_state.payment_terms = [
+                {'percent': 30, 'description': 'upon contract signing, covering smart home infrastructure works including cabling, wiring, point preparation, and technical layouts.'},
+                {'percent': 70, 'description': 'upon supply of smart home devices, including installation, system programming, configuration, testing, and commissioning.'},
+            ]
+            st.rerun()
+    
+    with col_presets[1]:
+        if st.button("📋 Preset: 50-50", use_container_width=True):
+            st.session_state.payment_terms_count = 2
+            st.session_state.payment_terms = [
+                {'percent': 50, 'description': 'upon order confirmation'},
+                {'percent': 50, 'description': 'upon project completion and handover'},
+            ]
+            st.rerun()
+    
+    with col_presets[2]:
+        if st.button("📋 Preset: 30-60-10", use_container_width=True):
+            st.session_state.payment_terms_count = 3
+            st.session_state.payment_terms = [
+                {'percent': 30, 'description': 'upon contract signing, covering smart home infrastructure works including cabling, wiring, point preparation, and technical layouts.'},
+                {'percent': 60, 'description': 'upon supply of smart home devices, including installation, system programming, configuration, testing, and commissioning.'},
+                {'percent': 10, 'description': 'upon final project handover, system completion, client approval.'},
+            ]
+            st.rerun()
+    
+    st.markdown("<div style='margin:12px 0;'></div>", unsafe_allow_html=True)
+    
+    # Dynamic payment terms inputs
+    st.markdown("**Add/Edit Payment Terms:**")
+    
+    payment_terms_list = []
+    for i in range(st.session_state.payment_terms_count):
+        col_term = st.columns([1, 3, 1])
+        
+        # Get existing value or default
+        existing_term = st.session_state.payment_terms[i] if i < len(st.session_state.payment_terms) else {'percent': 0, 'description': ''}
+        
+        with col_term[0]:
+            percent = st.number_input(f"% Payment {i+1}", min_value=0.0, max_value=100.0, 
+                                     value=float(existing_term.get('percent', 0)), step=1.0, key=f"payment_percent_{i}")
+        
+        with col_term[1]:
+            description = st.text_input(f"Description {i+1}", 
+                                       value=existing_term.get('description', ''), 
+                                       placeholder="e.g., upon contract signing...",
+                                       key=f"payment_desc_{i}")
+        
+        with col_term[2]:
+            if st.button("🗑️", key=f"delete_payment_{i}", help="Remove this payment term"):
+                st.session_state.payment_terms_count -= 1
+                st.session_state.payment_terms.pop(i)
+                st.rerun()
+        
+        payment_terms_list.append({'percent': percent, 'description': description})
+    
+    # Update session state with current values
+    st.session_state.payment_terms = payment_terms_list
+    
+    # Add new term button
+    if st.button("➕ Add Payment Term", use_container_width=True):
+        st.session_state.payment_terms_count += 1
+        st.session_state.payment_terms.append({'percent': 0, 'description': ''})
+        st.rerun()
+
+    # ======================================================
     #      SAVE + EXPORT WORD
     # ======================================================
     def generate_word_invoice(template, data):
@@ -643,6 +727,14 @@ def invoice_app():
             previously_paid = float(st.session_state.get('inv_previously_paid', 0.0) or 0.0)
             balance_due = grand_total - down_payment - previously_paid
 
+            # Build payment terms HTML (dynamic list)
+            payment_terms_html = ""
+            payment_terms = st.session_state.get('payment_terms', [])
+            if payment_terms:
+                for term in payment_terms:
+                    if term.get('percent') and term.get('description'):
+                        payment_terms_html += f"<li>{term.get('percent'):.0f}% {term.get('description')}</li>"
+
             html_invoice = render_quotation_html({
                 'company_name': load_settings().get('company_name', 'Newton Smart Home'),
                 'quotation_number': invoice_no,
@@ -656,6 +748,7 @@ def invoice_app():
                 'down_payment': down_payment,
                 'previously_paid': previously_paid,
                 'balance_due': balance_due,
+                'payment_terms_html': payment_terms_html,
                 'bank_name': load_settings().get('bank_name', ''),
                 'bank_account': load_settings().get('bank_account', ''),
                 'bank_iban': load_settings().get('bank_iban', ''),
