@@ -392,6 +392,109 @@ def invoice_app():
         ])
 
     st.markdown("---")
+    st.markdown("<div class='section-title'>🤖 AI Product Suggester (ChatGPT)</div>", unsafe_allow_html=True)
+    
+    # Initialize AI fields in session state
+    if 'ai_tech_name' not in st.session_state:
+        st.session_state.ai_tech_name = ""
+    if 'ai_tech_phone' not in st.session_state:
+        st.session_state.ai_tech_phone = ""
+    if 'ai_work_description' not in st.session_state:
+        st.session_state.ai_work_description = ""
+    if 'ai_suggestions' not in st.session_state:
+        st.session_state.ai_suggestions = []
+    
+    col_ai_1, col_ai_2 = st.columns(2)
+    
+    with col_ai_1:
+        tech_name = st.text_input(
+            "Technician/Contact Name",
+            value=st.session_state.ai_tech_name,
+            placeholder="e.g., فهد الحمادي",
+            key="ai_tech_name_input"
+        )
+        st.session_state.ai_tech_name = tech_name
+    
+    with col_ai_2:
+        tech_phone = st.text_input(
+            "Contact Phone",
+            value=st.session_state.ai_tech_phone,
+            placeholder="e.g., 0502992932",
+            key="ai_tech_phone_input"
+        )
+        st.session_state.ai_tech_phone = tech_phone
+    
+    work_desc = st.text_area(
+        "Work Description / Job Details",
+        value=st.session_state.ai_work_description,
+        placeholder="e.g., لايت سويتش سمارت اي سي يكون مدمج مع جات جي بيتي",
+        height=80,
+        key="ai_work_desc_input"
+    )
+    st.session_state.ai_work_description = work_desc
+    
+    col_ai_btn_1, col_ai_btn_2 = st.columns([1, 1])
+    
+    with col_ai_btn_1:
+        if st.button("💡 Get Product Suggestions from ChatGPT", use_container_width=True):
+            if not work_desc.strip():
+                st.warning("⚠️ Please enter work description first")
+            else:
+                try:
+                    import openai
+                    
+                    # Get API key from secrets
+                    api_key = st.secrets.get("OPENAI_API_KEY", None)
+                    if not api_key:
+                        st.error("❌ OpenAI API key not configured. Add OPENAI_API_KEY to secrets.")
+                    else:
+                        openai.api_key = api_key
+                        
+                        # Build prompt
+                        prompt = f"""Based on this smart home installation job description, suggest 3-5 relevant products/devices that should be included:
+
+Job: {work_desc}
+Technician: {tech_name if tech_name else "Unknown"}
+
+Please respond with a list of product names/descriptions only, one per line. Format:
+- Product Name: Brief Description (Price reference)
+
+Focus on smart home automation devices like switches, controllers, sensors, etc."""
+                        
+                        with st.spinner("🔄 Contacting ChatGPT..."):
+                            response = openai.ChatCompletion.create(
+                                model="gpt-3.5-turbo",
+                                messages=[
+                                    {"role": "system", "content": "You are a smart home expert suggesting products for installations."},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                temperature=0.7,
+                                max_tokens=300
+                            )
+                            
+                            suggestions = response['choices'][0]['message']['content']
+                            st.session_state.ai_suggestions = suggestions.split('\n')
+                            st.success("✅ Suggestions received!")
+                            st.rerun()
+                
+                except ImportError:
+                    st.error("❌ OpenAI library not installed. Install: pip install openai")
+                except Exception as e:
+                    st.error(f"❌ ChatGPT Error: {str(e)}")
+    
+    with col_ai_btn_2:
+        if st.button("🧹 Clear Suggestions", use_container_width=True):
+            st.session_state.ai_suggestions = []
+            st.rerun()
+    
+    # Display suggestions if available
+    if st.session_state.ai_suggestions:
+        st.markdown("**📋 Suggested Products:**")
+        for suggestion in st.session_state.ai_suggestions:
+            if suggestion.strip():
+                st.markdown(f"• {suggestion}")
+
+    st.markdown("---")
     st.markdown("<div class='section-title'>Add Product</div>", unsafe_allow_html=True)
 
     st.markdown("""
