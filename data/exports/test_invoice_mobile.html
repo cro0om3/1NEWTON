@@ -574,11 +574,11 @@
                 <table class="meta-table">
                     <tr>
                         <td class="label">Invoice No.</td>
-                        <td class="value">{{ quotation_number }}</td>
+                        <td class="value">INV-PREVIEW-TEST</td>
                     </tr>
                     <tr>
                         <td class="label">Date</td>
-                        <td class="value">{{ quotation_date }}</td>
+                        <td class="value">2025-12-27</td>
                     </tr>
                     <tr>
                         <td class="label">Status</td>
@@ -592,22 +592,16 @@
                 <div class="bill-grid">
                     <div class="bill-card">
                         <div class="bill-label">Client info</div>
-                        <div class="bill-name">{{ client_name }}</div>
+                        <div class="bill-name">Preview Client</div>
                         <div class="bill-text">
-                            Mobile: {{ mobile }}<br />
-                            Location: {{ project_location }}<br />
+                            Mobile: +971 50 123 4567<br />
+                            Location: Abu Dhabi<br />
                         </div>
                     </div>
                     <div class="bill-card">
                         <div class="bill-label">Project Details</div>
-                        {% if project_title %}
-                        <div class="bill-name">{{ project_title }}</div>
-                        {% endif %}
-                        {% if project_description %}
-                        <div class="bill-text">
-                            {{ project_description }}
-                        </div>
-                        {% endif %}
+                        
+                        
                     </div>
                 </div>
             </div>
@@ -626,25 +620,23 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item in items %}
+                        
                         <tr>
                             <td class="image">
                                 <div class="item-image-slot">
-                                    {% if item.image %}
-                                    <img src="{{ item.image }}" alt="{{ item.description }}"
+                                    
+                                    <img src="data:image/png;base64,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" alt="Light Switch"
                                         style="width:152px;height:75px;object-fit:contain;" />
-                                    {% else %}
-                                    IMAGE
-                                    {% endif %}
+                                    
                                 </div>
                             </td>
-                            <td>{{ item.description }}</td>
-                            <td class="warranty">{{ item.warranty }}</td>
-                            <td class="qty">{{ item.qty }}</td>
-                            <td class="price">{{ item.unit_price }}</td>
-                            <td class="total">{{ item.total }}</td>
+                            <td>Light Switch</td>
+                            <td class="warranty">5</td>
+                            <td class="qty">1</td>
+                            <td class="price">220.0</td>
+                            <td class="total">220.0</td>
                         </tr>
-                        {% endfor %}
+                        
                     </tbody>
                 </table>
                 <div class="totals-area">
@@ -678,31 +670,31 @@
                     <div class="totals-card">
                         <div class="totals-row label">
                             <span>Sub-total</span>
-                            <span class="value">{{ subtotal | currency }}</span>
+                            <span class="value">AED 220.00</span>
                         </div>
                         <div class="totals-row label">
                             <span>Installation &amp; Operation</span>
-                            <span class="value">{{ (Installation | default(0)) | currency }}</span>
+                            <span class="value">AED 150.00</span>
                         </div>
                         <div class="totals-row label">
                             <span>Discount</span>
-                            <span class="value">{{ (discount | default(0)) | currency }}</span>
+                            <span class="value">AED 0.00</span>
                         </div>
                         <div class="totals-row total">
                             <span>Total Invoice Amount</span>
-                            <span class="value">{{ total_amount | currency }}</span>
+                            <span class="value">AED 370.00</span>
                         </div>
                         <div class="totals-row label" style="margin-top:10px;">
                             <span>Down Payment</span>
-                            <span class="value">{{ (down_payment | default(0)) | currency }}</span>
+                            <span class="value">AED 0.00</span>
                         </div>
                         <div class="totals-row label">
                             <span>Previously Paid</span>
-                            <span class="value">{{ (previously_paid | default(0)) | currency }}</span>
+                            <span class="value">AED 0.00</span>
                         </div>
                         <div class="totals-row total">
                             <span>Balance Due</span>
-                            <span class="value">{{ balance_due | currency }}</span>
+                            <span class="value">AED 0.00</span>
                         </div>
                     </div>
                 </div>
@@ -728,13 +720,13 @@
                                 <li>
                                     <strong>Warranty &amp; Liability</strong>
                                     <ul style="margin: 2px 0 6px 0; padding-left: 16px;">
-                                        {{ warranty_html | safe }}
+                                        
                                     </ul>
                                 </li>
                                 <li>
                                     <strong>Payment Terms</strong>
                                     <ul style="margin: 2px 0 6px 0; padding-left: 16px;">
-                                        {{ payment_terms_html | safe }}
+                                        
                                         <li>All payments are non-refundable.</li>
                                     </ul>
                                 </li>
@@ -745,7 +737,7 @@
                                         <li>Installation includes testing, commissioning, and programming.</li>
                                         <li>Installation excludes the following:
                                             <ul style="margin: 2px 0 2px 0; padding-left: 16px;">
-                                                <li>Power supply sources ({{ power_provider }}) and any related failures or interruptions.</li>
+                                                <li>Power supply sources () and any related failures or interruptions.</li>
                                                 <li>Any structural or civil modifications required for installation works.</li>
                                             </ul>
                                         </li>

@@ -25,6 +25,8 @@ def proper_case(text):
         return text.title().strip()
     except:
         return text
+
+
 def invoice_app():
     # Phone formatter (same logic as quotation)
     def format_phone_input(raw_input):
@@ -37,6 +39,7 @@ def invoice_app():
             return f"+971 {digits[:2]} {digits[2:5]} {digits[5:]}"
         return None
     # Phone as 10-digit local (0502992932) for labels
+
     def phone_flat10(raw_input):
         if raw_input is None:
             return ""
@@ -77,14 +80,15 @@ def invoice_app():
     </style>
     """, unsafe_allow_html=True)
 
-        # (Header hero removed by request)
+    # (Header hero removed by request)
 
     # ---------------- LOAD DATA ----------------
     # Load product catalog (DB-first, fallback to Excel)
     catalog = None
     if _db is not None:
         try:
-            rows = _db.db_query('SELECT device as "Device", description as "Description", unit_price as "UnitPrice", warranty as "Warranty", image_base64 as "ImageBase64", image_path as "ImagePath" FROM products ORDER BY id')
+            rows = _db.db_query(
+                'SELECT device as "Device", description as "Description", unit_price as "UnitPrice", warranty as "Warranty", image_base64 as "ImageBase64", image_path as "ImagePath" FROM products ORDER BY id')
             if rows:
                 catalog = pd.DataFrame(rows)
         except Exception:
@@ -101,7 +105,8 @@ def invoice_app():
         # Try DB first then Excel
         if _db is not None:
             try:
-                rows = _db.db_query('SELECT base_id, date, type, number, amount, client_name, phone, location, note FROM records ORDER BY date')
+                rows = _db.db_query(
+                    'SELECT base_id, date, type, number, amount, client_name, phone, location, note FROM records ORDER BY date')
                 if rows:
                     df = pd.DataFrame(rows)
                     df.columns = [c.strip().lower() for c in df.columns]
@@ -114,7 +119,7 @@ def invoice_app():
             return df
         except:
             return pd.DataFrame(columns=[
-                "base_id","date","type","number","amount","client_name","phone","location","note"
+                "base_id", "date", "type", "number", "amount", "client_name", "phone", "location", "note"
             ])
 
             for r in raw_items:
@@ -129,17 +134,18 @@ def invoice_app():
                         continue
         if {"type", "number"}.issubset(df.columns):
             df = df.drop_duplicates(subset=["type", "number"], keep="last")
-        
+
         # حفظ في Firebase
         if save_invoice_to_firebase is not None:
             try:
                 for _, row in df.iterrows():
                     record_dict = row.to_dict()
-                    record_dict = {k: (None if pd.isna(v) else v) for k, v in record_dict.items()}
+                    record_dict = {k: (None if pd.isna(v) else v)
+                                   for k, v in record_dict.items()}
                     save_invoice_to_firebase(record_dict)
             except Exception as e:
                 print(f"⚠️ تحذير Firebase: {str(e)}")
-        
+
         df.to_excel("data/records.xlsx", index=False)
 
     # ---- Customers helpers (auto add/update) ----
@@ -148,8 +154,8 @@ def invoice_app():
         path = "data/customers.xlsx"
         if not os.path.exists(path):
             cols = [
-                "client_name","phone","location","email","status",
-                "notes","tags","next_follow_up","assigned_to","last_activity"
+                "client_name", "phone", "location", "email", "status",
+                "notes", "tags", "next_follow_up", "assigned_to", "last_activity"
             ]
             pd.DataFrame(columns=cols).to_excel(path, index=False)
 
@@ -157,10 +163,12 @@ def invoice_app():
         # Try DB then Excel
         if _db is not None:
             try:
-                rows = _db.db_query('SELECT id, name, phone, email, address FROM customers ORDER BY id')
+                rows = _db.db_query(
+                    'SELECT id, name, phone, email, address FROM customers ORDER BY id')
                 if rows:
                     df = pd.DataFrame(rows)
-                    df = df.rename(columns={'name':'client_name','address':'location'})
+                    df = df.rename(
+                        columns={'name': 'client_name', 'address': 'location'})
                     df.columns = [c.strip().lower() for c in df.columns]
                     return df
             except Exception:
@@ -172,8 +180,8 @@ def invoice_app():
             return df
         except Exception:
             return pd.DataFrame(columns=[
-                "client_name","phone","location","email","status",
-                "notes","tags","next_follow_up","assigned_to","last_activity"
+                "client_name", "phone", "location", "email", "status",
+                "notes", "tags", "next_follow_up", "assigned_to", "last_activity"
             ])
 
     def save_customers(df: pd.DataFrame):
@@ -186,17 +194,20 @@ def invoice_app():
                     email = row.get('email')
                     address = row.get('location')
                     try:
-                        existing = _db.db_query('SELECT id FROM customers WHERE name = %s AND phone = %s', (name, phone))
+                        existing = _db.db_query(
+                            'SELECT id FROM customers WHERE name = %s AND phone = %s', (name, phone))
                     except Exception:
                         existing = []
                     if existing:
                         try:
-                            _db.db_execute('UPDATE customers SET email = %s, address = %s WHERE id = %s', (email, address, existing[0].get('id')))
+                            _db.db_execute('UPDATE customers SET email = %s, address = %s WHERE id = %s', (
+                                email, address, existing[0].get('id')))
                         except Exception:
                             pass
                     else:
                         try:
-                            _db.db_execute('INSERT INTO customers(name, phone, email, address) VALUES (%s,%s,%s,%s)', (name, phone, email, address))
+                            _db.db_execute(
+                                'INSERT INTO customers(name, phone, email, address) VALUES (%s,%s,%s,%s)', (name, phone, email, address))
                         except Exception:
                             pass
                 df.to_excel("data/customers.xlsx", index=False)
@@ -223,17 +234,20 @@ def invoice_app():
             try:
                 existing = []
                 try:
-                    existing = _db.db_query('SELECT id FROM customers WHERE name = %s OR phone = %s', (proper_case(name), phone))
+                    existing = _db.db_query(
+                        'SELECT id FROM customers WHERE name = %s OR phone = %s', (proper_case(name), phone))
                 except Exception:
                     existing = []
                 if existing:
                     try:
-                        _db.db_execute('UPDATE customers SET phone = %s, address = %s WHERE id = %s', (phone, proper_case(location), existing[0].get('id')))
+                        _db.db_execute('UPDATE customers SET phone = %s, address = %s WHERE id = %s', (
+                            phone, proper_case(location), existing[0].get('id')))
                     except Exception:
                         pass
                 else:
                     try:
-                        _db.db_execute('INSERT INTO customers(name, phone, email, address) VALUES (%s,%s,%s,%s)', (proper_case(name), phone, '', proper_case(location)))
+                        _db.db_execute('INSERT INTO customers(name, phone, email, address) VALUES (%s,%s,%s,%s)', (proper_case(
+                            name), phone, '', proper_case(location)))
                     except Exception:
                         pass
                 return
@@ -248,7 +262,8 @@ def invoice_app():
             if m.any():
                 idx = m[m].index[0]
             elif phone:
-                cdf_phone = cdf.get("phone", pd.Series([], dtype=str)).apply(_norm_phone)
+                cdf_phone = cdf.get("phone", pd.Series(
+                    [], dtype=str)).apply(_norm_phone)
                 target = _norm_phone(phone)
                 pm = cdf_phone == target
                 if pm.any():
@@ -281,9 +296,11 @@ def invoice_app():
     quotes_df = records[records["type"] == "q"].copy()
 
     # ---------------- LAYOUT: SAME ROWS ----------------
-    st.markdown("<div class='section-title'>Invoice Summary</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Invoice Summary</div>",
+                unsafe_allow_html=True)
 
-    mode = st.radio("Invoice Creation Method", ["From Quotation", "New Invoice"], horizontal=True, key="inv_mode")
+    mode = st.radio("Invoice Creation Method", [
+                    "From Quotation", "New Invoice"], horizontal=True, key="inv_mode")
 
     today = datetime.today().strftime('%Y%m%d')
     auto_no = f"INV-{today}-{str(len(records[records['type']=='i']) + 1).zfill(3)}"
@@ -312,7 +329,8 @@ def invoice_app():
         if current_q and current_q != last_q:
             try:
                 q_prefill = records[records["number"] == current_q].iloc[0]
-                st.session_state["inv_client"] = q_prefill.get("client_name", "")
+                st.session_state["inv_client"] = q_prefill.get(
+                    "client_name", "")
                 st.session_state["inv_loc"] = q_prefill.get("location", "")
                 st.session_state["inv_phone"] = q_prefill.get("phone", "")
             except Exception:
@@ -323,54 +341,58 @@ def invoice_app():
     # Row 1: Name | Invoice Number
     r1c1, r1c2 = st.columns(2)
     with r1c1:
-        client_name = st.text_input("Client Name", value=sel_default_name, key="inv_client")
+        client_name = st.text_input(
+            "Client Name", value=sel_default_name, key="inv_client")
     with r1c2:
-        invoice_no = st.text_input("Invoice Number", auto_no, disabled=True, key="inv_no")
+        invoice_no = st.text_input(
+            "Invoice Number", auto_no, disabled=True, key="inv_no")
 
     # UAE Locations (same as quotation)
     uae_locations = [
-        "Abu Dhabi - Al Shamkha","Abu Dhabi - Al Shawamekh","Abu Dhabi - Khalifa City",
-        "Abu Dhabi - Al Bateen","Abu Dhabi - Al Reem Island","Abu Dhabi - Yas Island",
-        "Abu Dhabi - Al Mushrif","Abu Dhabi - Al Rawdah","Abu Dhabi - Al Muroor",
-        "Abu Dhabi - Baniyas","Abu Dhabi - Mussafah","Abu Dhabi - Al Mafraq",
-        "Abu Dhabi - Al Falah","Abu Dhabi - MBZ City","Abu Dhabi - Al Raha",
-        "Abu Dhabi - Al Maqtaa","Abu Dhabi - Zayed Port","Abu Dhabi - Saadiyat Island",
-        "Al Ain - Al Jimi","Al Ain - Falaj Hazza","Al Ain - Al Maqam",
-        "Al Ain - Zakher","Al Ain - Hili","Al Ain - Al Foah","Al Ain - Al Mutaredh",
-        "Al Ain - Al Towayya","Al Ain - Al Sarooj","Al Ain - Al Nyadat",
-        "Dubai - Marina","Dubai - Downtown","Dubai - Business Bay",
-        "Dubai - Jumeirah","Dubai - JBR","Dubai - Al Barsha","Dubai - Mirdif",
-        "Dubai - Deira","Dubai - Bur Dubai","Dubai - Silicon Oasis",
-        "Dubai - Academic City","Dubai - Arabian Ranches","Dubai - International City",
-        "Dubai - Dubai Hills","Dubai - The Springs","Dubai - The Meadows",
-        "Dubai - The Greens","Dubai - Palm Jumeirah","Dubai - Al Qusais",
-        "Dubai - Al Nahda","Dubai - JVC","Dubai - Damac Hills",
-        "Dubai - Discovery Gardens","Dubai - IMPZ","Dubai - Al Warqa",
+        "Abu Dhabi - Al Shamkha", "Abu Dhabi - Al Shawamekh", "Abu Dhabi - Khalifa City",
+        "Abu Dhabi - Al Bateen", "Abu Dhabi - Al Reem Island", "Abu Dhabi - Yas Island",
+        "Abu Dhabi - Al Mushrif", "Abu Dhabi - Al Rawdah", "Abu Dhabi - Al Muroor",
+        "Abu Dhabi - Baniyas", "Abu Dhabi - Mussafah", "Abu Dhabi - Al Mafraq",
+        "Abu Dhabi - Al Falah", "Abu Dhabi - MBZ City", "Abu Dhabi - Al Raha",
+        "Abu Dhabi - Al Maqtaa", "Abu Dhabi - Zayed Port", "Abu Dhabi - Saadiyat Island",
+        "Al Ain - Al Jimi", "Al Ain - Falaj Hazza", "Al Ain - Al Maqam",
+        "Al Ain - Zakher", "Al Ain - Hili", "Al Ain - Al Foah", "Al Ain - Al Mutaredh",
+        "Al Ain - Al Towayya", "Al Ain - Al Sarooj", "Al Ain - Al Nyadat",
+        "Dubai - Marina", "Dubai - Downtown", "Dubai - Business Bay",
+        "Dubai - Jumeirah", "Dubai - JBR", "Dubai - Al Barsha", "Dubai - Mirdif",
+        "Dubai - Deira", "Dubai - Bur Dubai", "Dubai - Silicon Oasis",
+        "Dubai - Academic City", "Dubai - Arabian Ranches", "Dubai - International City",
+        "Dubai - Dubai Hills", "Dubai - The Springs", "Dubai - The Meadows",
+        "Dubai - The Greens", "Dubai - Palm Jumeirah", "Dubai - Al Qusais",
+        "Dubai - Al Nahda", "Dubai - JVC", "Dubai - Damac Hills",
+        "Dubai - Discovery Gardens", "Dubai - IMPZ", "Dubai - Al Warqa",
         "Dubai - Nad Al Sheba",
-        "Sharjah - Al Majaz","Sharjah - Al Nahda","Sharjah - Al Taawun",
-        "Sharjah - Muwaileh","Sharjah - Al Khan","Sharjah - Al Yarmook",
-        "Sharjah - Al Qasimia","Sharjah - Al Fisht","Sharjah - Al Nasserya",
-        "Sharjah - Al Goaz","Sharjah - Al Jubail","Sharjah - Maysaloon",
-        "Ajman - Al Rashidiya","Ajman - Al Nuaimiya","Ajman - Al Mowaihat",
-        "Ajman - Al Rawda","Ajman - Al Jurf","Ajman - Al Hamidiya",
-        "Ajman - Al Rumailah","Ajman - Al Bustan","Ajman - City Center",
-        "RAK - Al Nakheel","RAK - Al Dhait","RAK - Julph",
-        "RAK - Khuzam","RAK - Al Qusaidat","RAK - Seih Al Uraibi",
-        "RAK - Al Rams","RAK - Al Mairid","RAK - Mina Al Arab",
-        "RAK - Al Hamra Village","RAK - Marjan Island",
-        "Fujairah - Al Faseel","Fujairah - Madhab","Fujairah - Dibba",
-        "Fujairah - Sakamkam","Fujairah - Mirbah","Fujairah - Al Taween",
-        "Fujairah - Kalba","Fujairah - Qidfa","Fujairah - Al Aqah",
-        "UAQ - Al Salama","UAQ - Al Haditha","UAQ - Al Raas",
-        "UAQ - Al Dar Al Baida","UAQ - Al Khor","UAQ - Al Ramlah",
-        "UAQ - Al Maidan","UAQ - Emirates City",
+        "Sharjah - Al Majaz", "Sharjah - Al Nahda", "Sharjah - Al Taawun",
+        "Sharjah - Muwaileh", "Sharjah - Al Khan", "Sharjah - Al Yarmook",
+        "Sharjah - Al Qasimia", "Sharjah - Al Fisht", "Sharjah - Al Nasserya",
+        "Sharjah - Al Goaz", "Sharjah - Al Jubail", "Sharjah - Maysaloon",
+        "Ajman - Al Rashidiya", "Ajman - Al Nuaimiya", "Ajman - Al Mowaihat",
+        "Ajman - Al Rawda", "Ajman - Al Jurf", "Ajman - Al Hamidiya",
+        "Ajman - Al Rumailah", "Ajman - Al Bustan", "Ajman - City Center",
+        "RAK - Al Nakheel", "RAK - Al Dhait", "RAK - Julph",
+        "RAK - Khuzam", "RAK - Al Qusaidat", "RAK - Seih Al Uraibi",
+        "RAK - Al Rams", "RAK - Al Mairid", "RAK - Mina Al Arab",
+        "RAK - Al Hamra Village", "RAK - Marjan Island",
+        "Fujairah - Al Faseel", "Fujairah - Madhab", "Fujairah - Dibba",
+        "Fujairah - Sakamkam", "Fujairah - Mirbah", "Fujairah - Al Taween",
+        "Fujairah - Kalba", "Fujairah - Qidfa", "Fujairah - Al Aqah",
+        "UAQ - Al Salama", "UAQ - Al Haditha", "UAQ - Al Raas",
+        "UAQ - Al Dar Al Baida", "UAQ - Al Khor", "UAQ - Al Ramlah",
+        "UAQ - Al Maidan", "UAQ - Emirates City",
     ]
 
     # Row 2: Location | Select Quotation
     r2c1, r2c2 = st.columns(2)
     with r2c1:
-        default_loc_index = uae_locations.index(sel_default_loc) if sel_default_loc in uae_locations else 0
-        selected_loc = st.selectbox("Project Location (UAE)", uae_locations, index=default_loc_index, key="inv_loc")
+        default_loc_index = uae_locations.index(
+            sel_default_loc) if sel_default_loc in uae_locations else 0
+        selected_loc = st.selectbox(
+            "Project Location (UAE)", uae_locations, index=default_loc_index, key="inv_loc")
         client_location = proper_case(selected_loc)
     with r2c2:
         if mode == "From Quotation":
@@ -379,7 +401,8 @@ def invoice_app():
                 numbers = df["number"].astype(str).tolist()
                 labels = {}
                 for _, row in df.iterrows():
-                    labels[str(row["number"])] = f"{row['number']}  |  {row.get('client_name','')}  |  {phone_label_mask(row.get('phone',''))}"
+                    labels[str(
+                        row["number"])] = f"{row['number']}  |  {row.get('client_name','')}  |  {phone_label_mask(row.get('phone',''))}"
 
                 selected_q = st.selectbox(
                     "Select Quotation",
@@ -393,7 +416,8 @@ def invoice_app():
     # Row 3: Phone | spacer
     r3c1, r3c2 = st.columns(2)
     with r3c1:
-        phone_raw = st.text_input("Mobile Number", placeholder="050xxxxxxx", key="quo_phone")
+        phone_raw = st.text_input(
+            "Mobile Number", placeholder="050xxxxxxx", key="quo_phone")
         client_phone = format_phone_input(phone_raw)
         if client_phone:
             st.success(f" {client_phone}")
@@ -403,11 +427,12 @@ def invoice_app():
     # ---------- ITEMS (same logic/visuals as Quotation) ----------
     if "invoice_table" not in st.session_state:
         st.session_state.invoice_table = pd.DataFrame(columns=[
-            "Item No","Product / Device","Description","Qty","Unit Price (AED)","Line Total (AED)","Warranty (Years)"
+            "Item No", "Product / Device", "Description", "Qty", "Unit Price (AED)", "Line Total (AED)", "Warranty (Years)"
         ])
 
     st.markdown("---")
-    st.markdown("<div class='section-title'>Add Product</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Add Product</div>",
+                unsafe_allow_html=True)
 
     st.markdown("""
     <div class="product-header">
@@ -425,27 +450,34 @@ def invoice_app():
         for i, row in df.iterrows():
             cols = st.columns([4.5, 0.7, 1, 1, 0.7, 0.7])
             with cols[0]:
-                st.markdown(f"<div class='added-product-row'><b>✓ {row['Product / Device']}</b></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='added-product-row'><b>✓ {row['Product / Device']}</b></div>", unsafe_allow_html=True)
             with cols[1]:
-                st.markdown(f"<div class='added-product-row'><span class='product-value'>{int(row['Qty'])}</span></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='added-product-row'><span class='product-value'>{int(row['Qty'])}</span></div>", unsafe_allow_html=True)
             with cols[2]:
-                st.markdown(f"<div class='added-product-row'><span class='product-value'>{row['Unit Price (AED)']:.2f}</span></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='added-product-row'><span class='product-value'>{row['Unit Price (AED)']:.2f}</span></div>", unsafe_allow_html=True)
             with cols[3]:
                 st.markdown(
                     f"<div class='added-product-row'><span class='product-value'>AED {row['Line Total (AED)']:.2f}</span></div>",
                     unsafe_allow_html=True
                 )
             with cols[4]:
-                st.markdown(f"<div class='added-product-row'><span class='product-value'>{int(row['Warranty (Years)'])} yr</span></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='added-product-row'><span class='product-value'>{int(row['Warranty (Years)'])} yr</span></div>", unsafe_allow_html=True)
             with cols[5]:
                 if st.button("❌", key=f"delete_{i}"):
-                    st.session_state.invoice_table = st.session_state.invoice_table.drop(i).reset_index(drop=True)
-                    st.session_state.invoice_table["Item No"] = range(1, len(st.session_state.invoice_table)+1)
+                    st.session_state.invoice_table = st.session_state.invoice_table.drop(
+                        i).reset_index(drop=True)
+                    st.session_state.invoice_table["Item No"] = range(
+                        1, len(st.session_state.invoice_table)+1)
                     st.rerun()
 
     e = st.columns([4.5, 0.7, 1, 1, 0.7, 0.7])
     with e[0]:
-        product = st.selectbox("Product", catalog["Device"], key="add_prod", label_visibility="collapsed")
+        product = st.selectbox(
+            "Product", catalog["Device"], key="add_prod", label_visibility="collapsed")
         row = catalog[catalog["Device"] == product].iloc[0]
         desc = row["Description"]
     # Sync defaults when product changes
@@ -473,9 +505,11 @@ def invoice_app():
         st.session_state["war_inv"] = int(row["Warranty"])
 
     with e[1]:
-        qty = st.number_input("Qty", min_value=1, step=1, label_visibility="collapsed", key="qty_inv")
+        qty = st.number_input("Qty", min_value=1, step=1,
+                              label_visibility="collapsed", key="qty_inv")
     with e[2]:
-        price = st.number_input("Unit Price (AED)", step=10.0, label_visibility="collapsed", key="price_inv")
+        price = st.number_input(
+            "Unit Price (AED)", step=10.0, label_visibility="collapsed", key="price_inv")
     line_total = qty * price
     with e[3]:
         st.markdown(
@@ -483,14 +517,17 @@ def invoice_app():
             unsafe_allow_html=True
         )
     with e[4]:
-        warranty = st.number_input("Warranty (Years)", min_value=0, value=st.session_state.get("war_inv", int(row["Warranty"])), step=1, label_visibility="collapsed", key="war_inv")
+        warranty = st.number_input("Warranty (Years)", min_value=0, value=st.session_state.get(
+            "war_inv", int(row["Warranty"])), step=1, label_visibility="collapsed", key="war_inv")
     with e[5]:
         if st.button("✅", key="add_inv_btn"):
             # Attempt to attach image info from catalog (prefer Base64)
             image_val = None
             try:
-                raw_b64 = row.get('ImageBase64') if 'ImageBase64' in row.index else None
-                image_val = ensure_data_url(raw_b64) if raw_b64 is not None else None
+                raw_b64 = row.get(
+                    'ImageBase64') if 'ImageBase64' in row.index else None
+                image_val = ensure_data_url(
+                    raw_b64) if raw_b64 is not None else None
             except Exception:
                 image_val = None
 
@@ -506,30 +543,34 @@ def invoice_app():
                 "ImageBase64": row.get('ImageBase64') if 'ImageBase64' in row.index else None,
                 "image": image_val,
             }
-            st.session_state.invoice_table = pd.concat([st.session_state.invoice_table, pd.DataFrame([new_item])], ignore_index=True)
+            st.session_state.invoice_table = pd.concat(
+                [st.session_state.invoice_table, pd.DataFrame([new_item])], ignore_index=True)
             st.rerun()
 
     # ---------- SUMMARY ----------
     st.markdown("---")
-    
+
     # Two columns: Summary Table (left) | Installation & Discount (right)
     col_left, col_right = st.columns([1, 1])
-    
+
     with col_left:
-        st.markdown("<div class='section-title'>Project Costs</div>", unsafe_allow_html=True)
-        
+        st.markdown("<div class='section-title'>Project Costs</div>",
+                    unsafe_allow_html=True)
+
         # Professional summary table (like receipt)
-        product_total = st.session_state.invoice_table["Line Total (AED)"].sum()
-        
+        product_total = st.session_state.invoice_table["Line Total (AED)"].sum(
+        )
+
         # Calculate installation/discount (needs to be defined before display)
         installation_cost = st.session_state.get("install_cost_inv_value", 0.0)
         discount_value = st.session_state.get("disc_value_inv_value", 0.0)
         discount_percent = st.session_state.get("disc_percent_inv_value", 0.0)
-        
-        percent_value = (product_total + installation_cost) * (discount_percent / 100)
+
+        percent_value = (product_total + installation_cost) * \
+            (discount_percent / 100)
         total_discount = percent_value + discount_value
         grand_total = (product_total + installation_cost) - total_discount
-        
+
         st.markdown("""
         <div style='background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;'>
             <div style='display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-soft);'>
@@ -550,30 +591,36 @@ def invoice_app():
             </div>
         </div>
         """.format(product_total, installation_cost, total_discount, grand_total), unsafe_allow_html=True)
-    
+
     with col_right:
-        st.markdown("<div class='section-title'>Installation & Discount</div>", unsafe_allow_html=True)
-        
+        st.markdown(
+            "<div class='section-title'>Installation & Discount</div>", unsafe_allow_html=True)
+
         # Installation Cost
-        installation_cost = st.number_input("Installation & Operation Devices (AED)", min_value=0.0, step=50.0, key="install_cost_inv")
+        installation_cost = st.number_input(
+            "Installation & Operation Devices (AED)", min_value=0.0, step=50.0, key="install_cost_inv")
         st.session_state["install_cost_inv_value"] = installation_cost
-        
+
         # Discount section
-        st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top:12px;'></div>",
+                    unsafe_allow_html=True)
         cD1, cD2 = st.columns(2)
         with cD1:
-            discount_value = st.number_input("Discount Value (AED)", min_value=0.0, key="disc_value_inv")
+            discount_value = st.number_input(
+                "Discount Value (AED)", min_value=0.0, key="disc_value_inv")
             st.session_state["disc_value_inv_value"] = discount_value
         with cD2:
-            discount_percent = st.number_input("Discount %", min_value=0.0, max_value=100.0, key="disc_percent_inv")
+            discount_percent = st.number_input(
+                "Discount %", min_value=0.0, max_value=100.0, key="disc_percent_inv")
             st.session_state["disc_percent_inv_value"] = discount_percent
 
     # ======================================================
     #      PAYMENT TERMS
     # ======================================================
     st.markdown("---")
-    st.markdown("<div class='section-title'>Payment Terms</div>", unsafe_allow_html=True)
-    
+    st.markdown("<div class='section-title'>Payment Terms</div>",
+                unsafe_allow_html=True)
+
     # Initialize session state for payment terms if not exists
     if 'payment_terms_count' not in st.session_state:
         st.session_state.payment_terms_count = 2
@@ -582,7 +629,7 @@ def invoice_app():
             {'percent': 30, 'description': 'upon contract signing, covering smart home infrastructure works including cabling, wiring, point preparation, and technical layouts.'},
             {'percent': 70, 'description': 'upon supply of smart home devices, including installation, system programming, configuration, testing, and commissioning.'},
         ]
-    
+
     # Quick preset buttons
     col_presets = st.columns(3)
     with col_presets[0]:
@@ -593,7 +640,7 @@ def invoice_app():
                 {'percent': 70, 'description': 'upon supply of smart home devices, including installation, system programming, configuration, testing, and commissioning.'},
             ]
             st.rerun()
-    
+
     with col_presets[1]:
         if st.button("📋 Preset: 50-50", use_container_width=True):
             st.session_state.payment_terms_count = 2
@@ -602,7 +649,7 @@ def invoice_app():
                 {'percent': 50, 'description': 'upon project completion and handover'},
             ]
             st.rerun()
-    
+
     with col_presets[2]:
         if st.button("📋 Preset: 30-60-10", use_container_width=True):
             st.session_state.payment_terms_count = 3
@@ -612,54 +659,59 @@ def invoice_app():
                 {'percent': 10, 'description': 'upon final project handover, system completion, client approval.'},
             ]
             st.rerun()
-    
+
     st.markdown("<div style='margin:12px 0;'></div>", unsafe_allow_html=True)
-    
+
     # Dynamic payment terms inputs
     st.markdown("**Add/Edit Payment Terms:**")
-    
+
     payment_terms_list = []
     for i in range(st.session_state.payment_terms_count):
         col_term = st.columns([1, 3, 1])
-        
+
         # Get existing value or default
-        existing_term = st.session_state.payment_terms[i] if i < len(st.session_state.payment_terms) else {'percent': 0, 'description': ''}
-        
+        existing_term = st.session_state.payment_terms[i] if i < len(
+            st.session_state.payment_terms) else {'percent': 0, 'description': ''}
+
         with col_term[0]:
-            percent = st.number_input(f"% Payment {i+1}", min_value=0.0, max_value=100.0, 
-                                     value=float(existing_term.get('percent', 0)), step=1.0, key=f"payment_percent_{i}")
-        
+            percent = st.number_input(f"% Payment {i+1}", min_value=0.0, max_value=100.0,
+                                      value=float(existing_term.get('percent', 0)), step=1.0, key=f"payment_percent_{i}")
+
         with col_term[1]:
-            description = st.text_input(f"Description {i+1}", 
-                                       value=existing_term.get('description', ''), 
-                                       placeholder="e.g., upon contract signing...",
-                                       key=f"payment_desc_{i}")
-        
+            description = st.text_input(f"Description {i+1}",
+                                        value=existing_term.get(
+                                            'description', ''),
+                                        placeholder="e.g., upon contract signing...",
+                                        key=f"payment_desc_{i}")
+
         with col_term[2]:
             if st.button("🗑️", key=f"delete_payment_{i}", help="Remove this payment term"):
                 st.session_state.payment_terms_count -= 1
                 st.session_state.payment_terms.pop(i)
                 st.rerun()
-        
-        payment_terms_list.append({'percent': percent, 'description': description})
-    
+
+        payment_terms_list.append(
+            {'percent': percent, 'description': description})
+
     # Update session state with current values
     st.session_state.payment_terms = payment_terms_list
-    
+
     # Add new term button
     if st.button("➕ Add Payment Term", use_container_width=True):
         st.session_state.payment_terms_count += 1
-        st.session_state.payment_terms.append({'percent': 0, 'description': ''})
+        st.session_state.payment_terms.append(
+            {'percent': 0, 'description': ''})
         st.rerun()
 
     # ======================================================
     #      WARRANTY & LIABILITY
     # ======================================================
-    st.markdown("<div class='section-title'>Warranty & Liability</div>", unsafe_allow_html=True)
-    
+    st.markdown("<div class='section-title'>Warranty & Liability</div>",
+                unsafe_allow_html=True)
+
     if 'warranty_shipping_cost' not in st.session_state:
         st.session_state.warranty_shipping_cost = 100.0
-    
+
     if 'warranty_text' not in st.session_state:
         st.session_state.warranty_text = """Warranty is provided for manufacturing defects only. This does not cover:
 • Wear and tear, misuse, or improper maintenance.
@@ -669,9 +721,9 @@ def invoice_app():
 Warranty claims must be submitted within two months of defect detection.
 Clients are responsible for shipping costs (AED {shipping_cost}) related to warranty claims.
 No cash refunds are provided under any circumstances."""
-    
+
     col_warranty = st.columns([2, 1])
-    
+
     with col_warranty[0]:
         warranty_text = st.text_area(
             "Warranty & Liability Text:",
@@ -681,7 +733,7 @@ No cash refunds are provided under any circumstances."""
             key="warranty_text_input"
         )
         st.session_state.warranty_text = warranty_text
-    
+
     with col_warranty[1]:
         shipping_cost = st.number_input(
             "Shipping Cost (AED):",
@@ -695,15 +747,16 @@ No cash refunds are provided under any circumstances."""
     # ======================================================
     #      PROJECT DETAILS
     # ======================================================
-    st.markdown("<div class='section-title'>Project Details</div>", unsafe_allow_html=True)
-    
+    st.markdown("<div class='section-title'>Project Details</div>",
+                unsafe_allow_html=True)
+
     if 'project_title' not in st.session_state:
         st.session_state.project_title = ""
     if 'project_description' not in st.session_state:
         st.session_state.project_description = ""
-    
+
     col_project = st.columns([2, 1])
-    
+
     with col_project[0]:
         project_title = st.text_input(
             "Project Title:",
@@ -712,30 +765,34 @@ No cash refunds are provided under any circumstances."""
             key="project_title_input"
         )
         st.session_state.project_title = project_title
-    
+
     with col_project[1]:
         st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
         # Load API key from settings
         settings = load_settings()
-        api_key = settings.get('openai_api_key', '').strip() if settings.get('openai_api_key') else ''
-        
+        api_key = settings.get('openai_api_key', '').strip(
+        ) if settings.get('openai_api_key') else ''
+
         if api_key:
             if st.button("✨ AI Generate", use_container_width=True, help="Auto-generate description using ChatGPT"):
                 from utils.openai_utils import generate_project_description
-                raw_items = df_to_list(st.session_state.get('invoice_table', pd.DataFrame()))
+                raw_items = df_to_list(st.session_state.get(
+                    'invoice_table', pd.DataFrame()))
                 try:
-                    generated = generate_project_description(raw_items, api_key)
+                    generated = generate_project_description(
+                        raw_items, api_key)
                     if generated:
                         st.session_state.project_description = generated
                         st.success("✓ Description generated!")
                         st.rerun()
                     else:
-                        st.warning("Could not generate description. Check your OpenAI API key or product list.")
+                        st.warning(
+                            "Could not generate description. Check your OpenAI API key or product list.")
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
         else:
             st.info("💡 Add OpenAI API key in Settings to enable AI generation")
-    
+
     project_description = st.text_area(
         "Project Description:",
         value=st.session_state.project_description,
@@ -748,8 +805,9 @@ No cash refunds are provided under any circumstances."""
     # ======================================================
     #      DELIVERY & INSTALLATION
     # ======================================================
-    st.markdown("<div class='section-title'>Delivery & Installation</div>", unsafe_allow_html=True)
-    
+    st.markdown("<div class='section-title'>Delivery & Installation</div>",
+                unsafe_allow_html=True)
+
     # Power provider dropdown - mapped by location
     power_providers = {
         "Abu Dhabi": "ADDC – Abu Dhabi",
@@ -760,32 +818,35 @@ No cash refunds are provided under any circumstances."""
         "Ras Al Khaimah": "FEWA – Ras Al Khaimah",
         "Fujairah": "EWE – Fujairah",
     }
-    
+
     if 'power_provider' not in st.session_state:
         # Try to auto-select based on location
-        client_location = st.session_state.get('inv_client_location', '').strip()
+        client_location = st.session_state.get(
+            'inv_client_location', '').strip()
         default_provider = None
         for location, provider in power_providers.items():
             if location.lower() in client_location.lower():
                 default_provider = provider
                 break
         st.session_state.power_provider = default_provider or "ADDC – Abu Dhabi"
-    
+
     col_delivery = st.columns([2, 1])
-    
+
     with col_delivery[0]:
         power_provider = st.selectbox(
             "Power Provider (excluded from installation scope):",
             options=list(power_providers.values()),
-            index=list(power_providers.values()).index(st.session_state.power_provider) if st.session_state.power_provider in power_providers.values() else 0,
+            index=list(power_providers.values()).index(
+                st.session_state.power_provider) if st.session_state.power_provider in power_providers.values() else 0,
             key="power_provider_select"
         )
         st.session_state.power_provider = power_provider
-    
+
     with col_delivery[1]:
         st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
         if st.button("🔄 Auto-detect", use_container_width=True, help="Auto-detect based on location"):
-            client_location = st.session_state.get('inv_client_location', '').strip()
+            client_location = st.session_state.get(
+                'inv_client_location', '').strip()
             for location, provider in power_providers.items():
                 if location.lower() in client_location.lower():
                     st.session_state.power_provider = provider
@@ -809,7 +870,8 @@ No cash refunds are provided under any circumstances."""
         return buf
 
     st.markdown("---")
-    st.markdown('<div class="section-title">Export Invoice</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Export Invoice</div>',
+                unsafe_allow_html=True)
 
     # Recalculate for download (same logic as UI summary)
     formatted_phone = format_phone_input(phone_raw) or phone_raw
@@ -817,7 +879,8 @@ No cash refunds are provided under any circumstances."""
     installation_cost = st.session_state.get("install_cost_inv_value", 0.0)
     discount_value = st.session_state.get("disc_value_inv_value", 0.0)
     discount_percent = st.session_state.get("disc_percent_inv_value", 0.0)
-    percent_value = (product_total + installation_cost) * (discount_percent / 100)
+    percent_value = (product_total + installation_cost) * \
+        (discount_percent / 100)
     total_discount = percent_value + discount_value
     grand_total = (product_total + installation_cost) - total_discount
 
@@ -845,7 +908,8 @@ No cash refunds are provided under any circumstances."""
         # Also provide HTML download using the A4 invoice template
         try:
             # Prepare normalized items for the renderer
-            raw_items = st.session_state.invoice_table.to_dict('records') if 'invoice_table' in st.session_state else []
+            raw_items = st.session_state.invoice_table.to_dict(
+                'records') if 'invoice_table' in st.session_state else []
             norm_items = []
             for r in raw_items:
                 try:
@@ -857,11 +921,13 @@ No cash refunds are provided under any circumstances."""
                 except Exception:
                     qty = 0.0
                 try:
-                    unit_price = float(r.get('Unit Price (AED)') or r.get('Unit Price') or r.get('unit_price') or 0)
+                    unit_price = float(r.get('Unit Price (AED)') or r.get(
+                        'Unit Price') or r.get('unit_price') or 0)
                 except Exception:
                     unit_price = 0.0
                 try:
-                    total = float(r.get('Line Total (AED)') or r.get('total') or qty * unit_price)
+                    total = float(r.get('Line Total (AED)')
+                                  or r.get('total') or qty * unit_price)
                 except Exception:
                     total = qty * unit_price
                 item = {
@@ -877,8 +943,10 @@ No cash refunds are provided under any circumstances."""
                 norm_items.append(item)
 
             # Calculate balance due: total - down_payment - previously_paid
-            down_payment = float(st.session_state.get('inv_down_payment', 0.0) or 0.0)
-            previously_paid = float(st.session_state.get('inv_previously_paid', 0.0) or 0.0)
+            down_payment = float(st.session_state.get(
+                'inv_down_payment', 0.0) or 0.0)
+            previously_paid = float(st.session_state.get(
+                'inv_previously_paid', 0.0) or 0.0)
             balance_due = grand_total - down_payment - previously_paid
 
             # Build payment terms HTML (dynamic list)
@@ -891,21 +959,26 @@ No cash refunds are provided under any circumstances."""
 
             # Build warranty HTML (format with dynamic shipping cost)
             warranty_text = st.session_state.get('warranty_text', '')
-            warranty_shipping_cost = st.session_state.get('warranty_shipping_cost', 100.0)
-            warranty_html = warranty_text.format(shipping_cost=warranty_shipping_cost)
+            warranty_shipping_cost = st.session_state.get(
+                'warranty_shipping_cost', 100.0)
+            warranty_html = warranty_text.format(
+                shipping_cost=warranty_shipping_cost)
 
             # Get power provider for delivery & installation
-            power_provider = st.session_state.get('power_provider', 'ADDC – Abu Dhabi')
-            
+            power_provider = st.session_state.get(
+                'power_provider', 'ADDC – Abu Dhabi')
+
             # Get project details
             project_title = st.session_state.get('project_title', '')
-            project_description = st.session_state.get('project_description', '')
+            project_description = st.session_state.get(
+                'project_description', '')
 
             html_invoice = render_quotation_html({
                 'company_name': load_settings().get('company_name', 'Newton Smart Home'),
                 'quotation_number': invoice_no,
                 'quotation_date': datetime.today().strftime('%Y-%m-%d'),
                 'client_name': client_name,
+                'mobile': client_phone or phone_raw,
                 'client_address': client_location,
                 'items': norm_items,
                 'subtotal': product_total,
@@ -927,9 +1000,11 @@ No cash refunds are provided under any circumstances."""
             }, template_name='newton_invoice_A4.html')
             # Single-click download using JS auto-download helper
             try:
-                st.download_button('Download Invoice (HTML)', html_invoice, file_name=f"Invoice_{invoice_no}.html", mime='text/html')
+                st.download_button('Download Invoice (HTML)', html_invoice,
+                                   file_name=f"Invoice_{invoice_no}.html", mime='text/html')
             except Exception:
-                st.download_button('Download Invoice (HTML)', html_invoice, file_name=f"Invoice_{invoice_no}.html", mime='text/html')
+                st.download_button('Download Invoice (HTML)', html_invoice,
+                                   file_name=f"Invoice_{invoice_no}.html", mime='text/html')
         except Exception as e:
             st.error(f"Unable to prepare invoice HTML: {e}")
 
@@ -938,14 +1013,16 @@ No cash refunds are provided under any circumstances."""
             base_id = None
             if mode == "From Quotation":
                 try:
-                    q_row = records[records["number"] == st.session_state.get("q_select_inline")].iloc[0]
+                    q_row = records[records["number"] == st.session_state.get(
+                        "q_select_inline")].iloc[0]
                     base_id = q_row.get("base_id", None)
                 except Exception:
                     base_id = None
             if not base_id:
                 # Generate a new base id for standalone invoices
                 today_id = datetime.today().strftime('%Y%m%d')
-                same_day = records[records["base_id"].astype(str).str.contains(today_id, na=False)] if not records.empty else pd.DataFrame()
+                same_day = records[records["base_id"].astype(str).str.contains(
+                    today_id, na=False)] if not records.empty else pd.DataFrame()
                 seq = len(same_day) + 1
                 base_id = f"{today_id}-{str(seq).zfill(3)}"
 
@@ -962,12 +1039,14 @@ No cash refunds are provided under any circumstances."""
                     "note": st.session_state.get("q_select_inline") or ""
                 })
                 # Auto-add/update the customer so future quotations/invoices link to same record
-                upsert_customer_from_invoice(client_name, phone_raw, client_location)
+                upsert_customer_from_invoice(
+                    client_name, phone_raw, client_location)
                 st.success(f"✅ Saved to records as base {base_id}")
             except Exception as e:
                 st.warning(f"⚠️ Downloaded, but failed to save record: {e}")
     except Exception as e:
         st.error(f"❌ Unable to generate Word file: {e}")
+
 
 def load_settings():
     try:
@@ -985,7 +1064,7 @@ def load_settings():
             df.columns = [c.strip().lower() for c in df.columns]
         except Exception:
             df = pd.DataFrame(columns=[
-                "base_id","date","type","number","amount","client_name","phone","location","note"
+                "base_id", "date", "type", "number", "amount", "client_name", "phone", "location", "note"
             ])
         df = pd.concat([df, pd.DataFrame([record])], ignore_index=True)
         df.to_excel(path, index=False)
