@@ -262,14 +262,17 @@ def receipt_app():
         try:
             html_receipt = render_quotation_html({
                 'company_name': load_settings().get('company_name', 'Newton Smart Home'),
-                'receipt_number': receipt_no,
-                'receipt_date': datetime.today().strftime('%Y-%m-%d'),
+                'quotation_number': selected_invoice,
+                'quotation_date': inv.get('date', datetime.today().strftime('%Y-%m-%d')),
                 'client_name': inv.get('client_name',''),
-                'client_phone': (format_phone_input(inv.get('phone','')) or inv.get('phone','')),
-                'client_location': inv.get('location',''),
-                'amount': payment,
-                'previous_paid': previous_paid_total,
-                'balance': remaining,
+                'mobile': (format_phone_input(inv.get('phone','')) or inv.get('phone','')),
+                'project_location': proper_case(inv.get('location','')),
+                'items': [],
+                'total_invoice_amount': inv.get('amount', 0),
+                'amount_paid': previous_paid_total + payment,
+                'payment_method': 'Cash',
+                'payment_date': datetime.today().strftime('%Y-%m-%d'),
+                'remaining_balance': remaining,
             }, template_name='newton_receipt_A4.html')
             try:
                 st.download_button('Download Receipt (HTML)', html_receipt, file_name=f"Receipt_{receipt_no}.html", mime='text/html')
