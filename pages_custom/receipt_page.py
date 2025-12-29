@@ -31,6 +31,7 @@ def receipt_app():
         if digits.startswith("5") and len(digits) == 9:
             return f"+971 {digits[:2]} {digits[2:5]} {digits[5:]}"
         return None
+
     def phone_flat10(raw_input):
         if raw_input is None:
             return ""
@@ -44,6 +45,7 @@ def receipt_app():
         if len(digits) == 10 and digits.startswith('05'):
             return digits
         return digits[-10:]
+
     def phone_label_mask(raw_input):
         flat = phone_flat10(raw_input)
         return f"{flat} xxxxxxxxxx" if flat else "xxxxxxxxxx"
@@ -54,7 +56,8 @@ def receipt_app():
     def load_records():
         if _db is not None:
             try:
-                rows = _db.db_query('SELECT base_id, date, type, number, amount, client_name, phone, location, note FROM records ORDER BY date')
+                rows = _db.db_query(
+                    'SELECT base_id, date, type, number, amount, client_name, phone, location, note FROM records ORDER BY date')
                 if rows:
                     df = pd.DataFrame(rows)
                     df.columns = [c.strip().lower() for c in df.columns]
@@ -77,18 +80,20 @@ def receipt_app():
             try:
                 if rec.get('type') and rec.get('number'):
                     try:
-                        _db.db_execute('DELETE FROM records WHERE type = %s AND number = %s', (rec.get('type'), rec.get('number')))
+                        _db.db_execute('DELETE FROM records WHERE type = %s AND number = %s', (rec.get(
+                            'type'), rec.get('number')))
                     except Exception:
                         pass
                 _db.db_execute('INSERT INTO records(base_id, date, type, number, amount, client_name, phone, location, note) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)',
-                                (rec.get('base_id'), rec.get('date'), rec.get('type'), rec.get('number'), rec.get('amount'), rec.get('client_name'), rec.get('phone'), rec.get('location'), rec.get('note')))
+                               (rec.get('base_id'), rec.get('date'), rec.get('type'), rec.get('number'), rec.get('amount'), rec.get('client_name'), rec.get('phone'), rec.get('location'), rec.get('note')))
                 return
             except Exception:
                 pass
 
         df = load_records()
         if not df.empty and {"type", "number"}.issubset(df.columns):
-            df = df[~((df["type"] == rec.get("type")) & (df["number"] == rec.get("number")))]
+            df = df[~((df["type"] == rec.get("type")) &
+                      (df["number"] == rec.get("number")))]
         df = pd.concat([df, pd.DataFrame([rec])], ignore_index=True)
         if {"type", "number"}.issubset(df.columns):
             df = df.drop_duplicates(subset=["type", "number"], keep="last")
@@ -105,7 +110,8 @@ def receipt_app():
                 for cell in row.cells:
                     for k, v in data_dict.items():
                         if k in cell.text:
-                            cell.text = cell.text.replace(k, "" if v is None else str(v))
+                            cell.text = cell.text.replace(
+                                k, "" if v is None else str(v))
 
         buf = BytesIO()
         doc.save(buf)
@@ -127,7 +133,8 @@ def receipt_app():
     # =====================================
     # RECEIPT UI
     # =====================================
-    st.markdown("<div class='section-title'>Receipt Summary</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Receipt Summary</div>",
+                unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
 
@@ -138,7 +145,8 @@ def receipt_app():
             numbers = df["number"].astype(str).tolist()
             labels = {}
             for _, row in df.iterrows():
-                labels[str(row["number"])]= f"{row['number']}  |  {row.get('client_name','')}  |  {phone_label_mask(row.get('phone',''))}"
+                labels[str(
+                    row["number"])] = f"{row['number']}  |  {row.get('client_name','')}  |  {phone_label_mask(row.get('phone',''))}"
             selected_invoice = st.selectbox(
                 "Select Invoice",
                 options=numbers if numbers else ["No invoices"],
@@ -150,7 +158,8 @@ def receipt_app():
 
     with c2:
         today = datetime.today().strftime('%Y%m%d')
-        st.text_input("Receipt Date", value=datetime.today().strftime('%Y-%m-%d'), disabled=True)
+        st.text_input("Receipt Date", value=datetime.today().strftime(
+            '%Y-%m-%d'), disabled=True)
 
     if selected_invoice:
 
@@ -159,15 +168,18 @@ def receipt_app():
         base_id = inv["base_id"]
 
         # Count previous receipts for same base ID
-        previous_r = len(records[(records["base_id"] == base_id) & (records["type"] == "r")]) + 1
+        previous_r = len(
+            records[(records["base_id"] == base_id) & (records["type"] == "r")]) + 1
 
         receipt_no = f"R-{today}-{base_id}-{previous_r}"
 
         st.markdown("---")
-        st.markdown("<div class='section-title'>Client Information</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='section-title'>Client Information</div>", unsafe_allow_html=True)
 
         st.write(f"**Client Name:** {proper_case(inv.get('client_name',''))}")
-        pretty_phone = format_phone_input(inv.get('phone','')) or inv.get('phone','')
+        pretty_phone = format_phone_input(
+            inv.get('phone', '')) or inv.get('phone', '')
         st.write(f"**Phone:** {pretty_phone}")
         st.write(f"**Location:** {proper_case(inv.get('location',''))}")
         st.write(f"**Invoice Total:** {float(inv.get('amount',0)):.2f} AED")
@@ -175,14 +187,17 @@ def receipt_app():
         st.markdown("---")
 
         # Previous payments and summary
-        prev_receipts = records[(records["base_id"] == base_id) & (records["type"] == "r")]
-        previous_paid_total = prev_receipts["amount"].sum() if not prev_receipts.empty else 0.0
+        prev_receipts = records[(records["base_id"] == base_id) & (
+            records["type"] == "r")]
+        previous_paid_total = prev_receipts["amount"].sum(
+        ) if not prev_receipts.empty else 0.0
 
         st.markdown("---")
-        col_left, col_right = st.columns([1,1])
+        col_left, col_right = st.columns([1, 1])
 
         with col_right:
-            st.markdown("<div class='section-title'>Payment</div>", unsafe_allow_html=True)
+            st.markdown("<div class='section-title'>Payment</div>",
+                        unsafe_allow_html=True)
             max_allowed = max(inv["amount"] - previous_paid_total, 0.0)
             payment = st.number_input(
                 "Payment Amount (AED)",
@@ -191,14 +206,16 @@ def receipt_app():
                 key="rcpt_payment"
             )
             if payment > max_allowed:
-                st.warning("Entered payment exceeds remaining balance; capped.")
+                st.warning(
+                    "Entered payment exceeds remaining balance; capped.")
                 payment = max_allowed
             total_paid_after = previous_paid_total + payment
             remaining = inv["amount"] - total_paid_after
             st.metric("Remaining Balance", f"{remaining:,.2f} AED")
 
         with col_left:
-            st.markdown("<div class='section-title'>Payment Summary</div>", unsafe_allow_html=True)
+            st.markdown(
+                "<div class='section-title'>Payment Summary</div>", unsafe_allow_html=True)
             st.markdown(
                 f"""
                 <div style='background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,.04);'>
@@ -229,10 +246,11 @@ def receipt_app():
 
             # History list
             if not prev_receipts.empty:
-                st.markdown("<div style='margin-top:14px;font-weight:600;color:#6e6e73;'>Previous Receipts</div>", unsafe_allow_html=True)
+                st.markdown(
+                    "<div style='margin-top:14px;font-weight:600;color:#6e6e73;'>Previous Receipts</div>", unsafe_allow_html=True)
                 for _, r in prev_receipts.sort_values("date", ascending=False).iterrows():
                     st.markdown(
-                        f"<div style='font-size:13px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.08);'>" \
+                        f"<div style='font-size:13px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.08);'>"
                         f"{r['number']} — {r['amount']:,.2f} AED</div>",
                         unsafe_allow_html=True,
                     )
@@ -241,11 +259,11 @@ def receipt_app():
 
         # Prepare data for Word and one-click download
         data = {
-            "{{client_name}}": inv.get("client_name",""),
+            "{{client_name}}": inv.get("client_name", ""),
             "{{invoice_no}}": selected_invoice,
             "{{receipt_no}}": receipt_no,
-            "{{client_phone}}": (format_phone_input(inv.get("phone","")) or inv.get("phone","")),
-            "{{client_location}}": inv.get("location",""),
+            "{{client_phone}}": (format_phone_input(inv.get("phone", "")) or inv.get("phone", "")),
+            "{{client_location}}": inv.get("location", ""),
             "{{amount}}": f"{payment:,.2f}",
             "{{balance}}": f"{remaining:,.2f}",
         }
@@ -264,9 +282,9 @@ def receipt_app():
                 'company_name': load_settings().get('company_name', 'Newton Smart Home'),
                 'quotation_number': selected_invoice,
                 'quotation_date': inv.get('date', datetime.today().strftime('%Y-%m-%d')),
-                'client_name': inv.get('client_name',''),
-                'mobile': (format_phone_input(inv.get('phone','')) or inv.get('phone','')),
-                'project_location': proper_case(inv.get('location','')),
+                'client_name': inv.get('client_name', ''),
+                'mobile': (format_phone_input(inv.get('phone', '')) or inv.get('phone', '')),
+                'project_location': proper_case(inv.get('location', '')),
                 'items': [],
                 'total_invoice_amount': inv.get('amount', 0),
                 'amount_paid': previous_paid_total + payment,
@@ -275,9 +293,11 @@ def receipt_app():
                 'remaining_balance': remaining,
             }, template_name='newton_receipt_A4.html')
             try:
-                st.download_button('Download Receipt (HTML)', html_receipt, file_name=f"Receipt_{receipt_no}.html", mime='text/html')
+                st.download_button('Download Receipt (HTML)', html_receipt,
+                                   file_name=f"Receipt_{receipt_no}.html", mime='text/html')
             except Exception:
-                st.download_button('Download Receipt (HTML)', html_receipt, file_name=f"Receipt_{receipt_no}.html", mime='text/html')
+                st.download_button('Download Receipt (HTML)', html_receipt,
+                                   file_name=f"Receipt_{receipt_no}.html", mime='text/html')
         except Exception as e:
             st.warning(f"Unable to prepare receipt HTML: {e}")
 
@@ -289,12 +309,11 @@ def receipt_app():
                     "type": "r",
                     "number": receipt_no,
                     "amount": payment,
-                    "client_name": inv.get("client_name",""),
-                    "phone": inv.get("phone",""),
-                    "location": inv.get("location",""),
+                    "client_name": inv.get("client_name", ""),
+                    "phone": inv.get("phone", ""),
+                    "location": inv.get("location", ""),
                     "note": ""
                 })
                 st.success(f"✅ Saved receipt {receipt_no}")
             except Exception as e:
                 st.warning(f"⚠️ Downloaded, but failed to save record: {e}")
-
