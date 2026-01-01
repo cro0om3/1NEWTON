@@ -9,6 +9,7 @@ from pages_custom.customers_page import customers_app
 from pages_custom.products_page import products_app
 from pages_custom.reports_page import reports_app
 from pages_custom.settings_page import settings_app
+from pages_custom.power_tools_page import power_tools_app
 from utils.auth import validate_pin, can_access_page, is_admin
 from utils.logger import log_event
 import re
@@ -249,11 +250,20 @@ if "show_pin" not in st.session_state:
 
 # Show login screen if not authenticated
 if not st.session_state.authenticated:
-    st.markdown("""
-        <div style='text-align:center; padding:60px 20px;'>
-            <h1 style='color:var(--accent); font-size:48px; margin-bottom:10px;'>Secure Access</h1>
-            <h2 style='color:var(--text);'>Newton Smart Home</h2>
-            <p style='color:var(--text-soft);'>Enter your PIN to continue</p>
+    # Load logo for PIN page
+    logo_path = Path("data") / "logo.png"
+    logo_html = ""
+    if logo_path.exists():
+        import base64
+        with open(logo_path, "rb") as f:
+            logo_b64 = base64.b64encode(f.read()).decode()
+            logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="width:400px; margin-bottom:1px;">'
+    
+    st.markdown(f"""
+        <div style='text-align:center; padding:10px 20px;'>
+            {logo_html}
+            <h1 style='color:var(--accent); font-size:28px; margin-bottom:1px;'>Secure Access</h1>
+            <p style='color:var(--text-soft); font-size:14px;'>Enter your PIN to continue</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -369,7 +379,7 @@ st.markdown(
         justify-content: flex-end;
         min-width: 200px;
         position: absolute;
-        right: -30px;
+        right: -10px;
         top: 50%;
         transform: translateY(-50%);
     }
@@ -609,6 +619,7 @@ PAGE_TITLES = {
     "products": ("Products", "Manage catalog"),
     "reports": ("Reports", "Business insights"),
     "settings": ("Settings", "Configure application"),
+    "power_tools": ("⚡ Power Tools", "Unlimited admin capabilities"),
 }
 
 # Single source of truth for emojis used across nav buttons
@@ -621,6 +632,7 @@ ICON_MAP = {
     "products": "📦",
     "reports": "📈",
     "settings": "⚙️",
+    "power_tools": "⚡",
     "logout": "🚪",
     "dark": "🌙",
     "light": "☀️",
@@ -972,7 +984,13 @@ ICON_MAP = {
 
 # Load logo
 _logo_uri = _load_logo_datauri()
-_logo_html = f'<img src="{_logo_uri}" alt="Newton Smart Home" class="logo-badge" />' if _logo_uri else '<div style="width:120px;height:80px;background:linear-gradient(135deg,#0a84ff,#5bc0ff);border-radius:16px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;">NEWTON</div>'
+# Render logo responsively so it fits within the hero card
+_logo_html = (
+    f'<img src="{_logo_uri}" alt="Newton Smart Home" class="logo-badge" '
+    f'style="max-width:60%;height:auto;object-fit:contain;" />'
+    if _logo_uri
+    else '<div class="logo-badge" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a84ff,#5bc0ff);border-radius:16px;color:white;font-weight:700;font-size:18px;padding:10px 14px;">NEWTON</div>'
+)
 
 # Get current page info
 current_title, current_subtitle = PAGE_TITLES.get(st.session_state.active_page, ("Dashboard", "Monitor live analytics"))
@@ -1113,5 +1131,5 @@ elif st.session_state.active_page == "reports":
     reports_app()
 elif st.session_state.active_page == "settings":
     settings_app()
-elif st.session_state.active_page == "settings":
-    settings_app()
+elif st.session_state.active_page == "power_tools":
+    power_tools_app()

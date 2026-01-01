@@ -1,0 +1,78 @@
+{
+  "name": "Newton Winter",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#020617",
+    "editor.foreground": "#FACC15",
+    "editorCursor.foreground": "#38BDF8",
+    "editorLineNumber.foreground": "#4B5563",
+    "editor.selectionBackground": "#1E3A8A",
+    "editor.inactiveSelectionBackground": "#111827",
+    "editorIndentGuide.background": "#0F172A",
+    "sideBar.background": "#020617",
+    "sideBar.foreground": "#E5E7EB",
+    "activityBar.background": "#020617",
+    "statusBar.background": "#020617",
+    "button.background": "#1D4ED8",
+    "button.hoverBackground": "#2563EB",
+    "contrastBorder": "#FACC15"
+  },
+  "tokenColors": [
+    {
+      "scope": [
+        "comment",
+        "punctuation.definition.comment"
+      ],
+      "settings": {
+        "foreground": "#64748B",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "scope": [
+        "string",
+        "constant.other.symbol"
+      ],
+      "settings": {
+        "foreground": "#FDE68A"
+      }
+    },
+    {
+      "scope": [
+        "keyword",
+        "storage"
+      ],
+      "settings": {
+        "foreground": "#38BDF8",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "variable",
+        "identifier"
+      ],
+      "settings": {
+        "foreground": "#FACC15"
+      }
+    },
+    {
+      "scope": [
+        "constant.numeric",
+        "constant.language"
+      ],
+      "settings": {
+        "foreground": "#60A5FA"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.function",
+        "support.function"
+      ],
+      "settings": {
+        "foreground": "#38BDF8"
+      }
+    }
+  ]
+}

@@ -25,15 +25,12 @@
             box-sizing: border-box;
         }
 
-        /* Force a fixed visual page size matching the screenshot inner box
-           We'll use explicit pixel dimensions (894×918) for the inner content
-           and keep @page for PDF fallback. */
         @page {
             size: A4;
             margin: 12mm 10mm;
         }
 
-        body {
+body {
             margin: 0;
             padding: 32px 16px;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -44,22 +41,15 @@
             color: var(--text-main);
         }
 
-        /* Inner fixed canvas to match the screenshot "padding box" */
         .page {
-            width: 894px;
-            /* exact inner width from screenshot */
-            height: 918px;
-            /* exact inner height from screenshot */
-            box-sizing: border-box;
+            max-width: 960px;
             margin: 0 auto;
             background: linear-gradient(135deg, #ffffff, #f9fafb);
-            border-radius: 12px;
+            border-radius: 24px;
             border: 1px solid rgba(148, 163, 184, 0.35);
             box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
             padding: 30px 32px 34px;
-            overflow: hidden;
         }
-
         .page-break {
             page-break-before: always;
         }
@@ -135,13 +125,6 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: .12em;
-        }
-
-        .brand-logo {
-            width: 140%;
-            height: 500%;
-            object-fit: contain;
-            display: block;
         }
 
         .meta-bar {
@@ -334,23 +317,22 @@
 
         .item-image-slot {
             width: 152px;
+            /* 1.58" */
             height: 75px;
+            /* 0.78" */
             border-radius: 14px;
-            border: 1px solid rgba(15, 23, 42, 0.15);
-            background: linear-gradient(135deg, rgba(248, 250, 255, 0.92), rgba(236, 242, 255, 0.92));
+            border: 1px dashed rgba(148, 163, 184, 0.9);
+            background:
+                radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.18), transparent 60%),
+                radial-gradient(circle at 100% 100%, rgba(191, 219, 254, 0.6), transparent 60%),
+                #eff6ff;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-            box-sizing: border-box;
-        }
-
-        .item-image-slot img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: block;
+            font-size: 10px;
+            color: #1f2937;
+            text-transform: uppercase;
+            letter-spacing: .10em;
         }
 
         .items-note {
@@ -555,46 +537,6 @@
             text-align: center;
         }
     </style>
-    <script>
-        // Small helper: triggers download of the visible HTML content
-        function downloadHtml(filename) {
-            const html = document.documentElement.outerHTML;
-            const blob = new Blob([html], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename || 'quotation.html';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-        }
-
-        // Call a backend endpoint to request PDF conversion. Streamlit app
-        // will provide a small endpoint when serving this HTML from the app.
-        async function requestPdf(endpoint, htmlPath) {
-            try {
-                const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: htmlPath })
-                });
-                const json = await res.json();
-                if (json && json.pdf_path) {
-                    const a = document.createElement('a');
-                    a.href = json.pdf_path;
-                    a.download = json.pdf_name || 'quotation.pdf';
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                } else {
-                    alert('PDF conversion failed');
-                }
-            } catch (err) {
-                alert('PDF request error: ' + err.message);
-            }
-        }
-    </script>
 </head>
 
 <body>
@@ -631,11 +573,11 @@
             <table class="meta-table">
                 <tr>
                     <td class="label">Quotation No.</td>
-                    <td class="value">QT-TEST-001</td>
+                    <td class="value">Q20260002</td>
                 </tr>
                 <tr>
                     <td class="label">Date</td>
-                    <td class="value">2025-12-25</td>
+                    <td class="value">2026-01-01</td>
                 </tr>
                 <tr>
                     <td class="label">Valid Until</td>
@@ -653,10 +595,10 @@
             <div class="bill-grid">
                 <div class="bill-card">
                     <div class="bill-label">Client info</div>
-                    <div class="bill-name">Test Customer</div>
+                    <div class="bill-name"></div>
                     <div class="bill-text">
                         Mobile: <br />
-                        Location: 123 Test Street<br />
+                        Location: Abu Dhabi - Al Shamkha<br />
                     </div>
                 </div>
                 <div class="bill-card">
@@ -684,36 +626,6 @@
                 </thead>
                 <tbody>
                     
-                    <tr>
-                        <td class="image">
-                            <div class="item-image-slot">
-                                
-                                IMAGE
-                                
-                            </div>
-                        </td>
-                        <td>Test product A</td>
-                        <td class="warranty"></td>
-                        <td class="qty">2</td>
-                        <td class="price">100</td>
-                        <td class="total">200</td>
-                    </tr>
-                    
-                    <tr>
-                        <td class="image">
-                            <div class="item-image-slot">
-                                
-                                IMAGE
-                                
-                            </div>
-                        </td>
-                        <td>Test product B</td>
-                        <td class="warranty"></td>
-                        <td class="qty">1</td>
-                        <td class="price">300</td>
-                        <td class="total">300</td>
-                    </tr>
-                    
                 </tbody>
             </table>
             <div class="totals-area">
@@ -731,7 +643,7 @@
                             </tr>
                             <tr>
                                 <td class="label">Account No</td>
-                                <td class="value">3003140080000000</td>
+                                <td class="value">3003140080000001</td>
                             </tr>
                             <tr>
                                 <td class="label">IBAN</td>
@@ -747,7 +659,7 @@
                 <div class="totals-card">
                     <div class="totals-row label">
                         <span>Sub-total</span>
-                        <span class="value">AED 500.00</span>
+                        <span class="value">AED 0.00</span>
                     </div>
                     <div class="totals-row label">
                         <span>Installation & Operation </span>
@@ -755,7 +667,7 @@
                     </div>
                     <div class="totals-row total">
                         <span>Total Amount</span>
-                        <span class="value">AED 500.00</span>
+                        <span class="value">AED 0.00</span>
                     </div>
                 </div>
             </div>
@@ -769,8 +681,8 @@
                         <h4>Warranty</h4>
                         <p>
                             All Newton Smart Home equipment supplied under this quotation is covered by a
-                            standard 12-month warranty against manufacturing defects from the date of handover,
-                            provided that the system is used as intended and maintained properly.
+                            standard warranty against manufacturing defects,effective from the date of handover,
+                            the system is operated as intended and maintained in accordance with recommended guidelines.
                         </p>
                     </div>
                     <div class="info-card">

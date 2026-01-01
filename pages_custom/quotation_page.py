@@ -332,11 +332,20 @@ def quotation_app():
     if 'quo_loc' not in st.session_state:
         st.session_state['quo_loc'] = uae_locations[0] if uae_locations else ''
     if 'quo_no' not in st.session_state:
-        st.session_state['quo_no'] = datetime.today().strftime('QUO-%Y%m%d-001')
+        # New numbering system: QYYYY#### (e.g., Q20260001)
+        current_year = datetime.today().year
+        records = load_records()
+        year_quotations = records[(records['type']=='q') & (records['number'].astype(str).str.startswith(f'Q{current_year}'))]
+        next_seq = len(year_quotations) + 1
+        st.session_state['quo_no'] = f"Q{current_year}{str(next_seq).zfill(4)}"
     if 'quo_prepared_by' not in st.session_state:
-        st.session_state['quo_prepared_by'] = ''
+        st.session_state['quo_prepared_by'] = 'Mr Bukhry'
     if 'quo_approved_by' not in st.session_state:
-        st.session_state['quo_approved_by'] = ''
+        st.session_state['quo_approved_by'] = 'Mr Mohammed'
+    if 'quo_project_title' not in st.session_state:
+        st.session_state['quo_project_title'] = ''
+    if 'quo_project_description' not in st.session_state:
+        st.session_state['quo_project_description'] = ''
 
     st.markdown('<div class="section-title">Quotation Summary</div>', unsafe_allow_html=True)
     ql, qr = st.columns([1,1])
@@ -346,8 +355,72 @@ def quotation_app():
         st.text_input("Mobile Number", value=st.session_state.get('quo_phone', ''), placeholder="050xxxxxxx", key='quo_phone')
     with qr:
         st.text_input("Quotation No", value=st.session_state.get('quo_no', ''), key='quo_no')
-        st.text_input("Prepared By", value=st.session_state.get('quo_prepared_by', ''), key='quo_prepared_by')
-        st.text_input("Approved By", value=st.session_state.get('quo_approved_by', ''), key='quo_approved_by')
+        st.text_input("Prepared By", value='Mr Bukhry', key='quo_prepared_by', disabled=True)
+        st.text_input("Approved By", value='Mr Mohammed', key='quo_approved_by', disabled=True)
+    
+    # Project Details Section with AI Generation
+    st.markdown('<div class="section-title">Project Details</div>', unsafe_allow_html=True)
+    proj_col1, proj_col2 = st.columns([3, 1])
+    with proj_col1:
+        st.text_input(
+            "Project Title",
+            value=st.session_state.get('quo_project_title', ''),
+            key='quo_project_title',
+            placeholder="e.g., Smart Home Installation - Villa 123",
+            help="Enter project title or click Generate to auto-create"
+        )
+        st.text_area(
+            "Project Description",
+            value=st.session_state.get('quo_project_description', ''),
+            key='quo_project_description',
+            placeholder="e.g., Complete smart home system including lighting control, security cameras, and automation",
+            help="Enter project description or click Generate to auto-create",
+            height=100
+        )
+    with proj_col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🤖 Generate with AI", key="generate_project_details", use_container_width=True, type="primary"):
+            if st.session_state.product_table.empty:
+                st.warning("⚠️ Please add products first to generate project details")
+            else:
+                with st.spinner("🔄 Generating project details..."):
+                    try:
+                        from utils.openai_utils import chat_with_ai
+                        
+                        # Build product list
+                        products_list = []
+                        for _, row in st.session_state.product_table.iterrows():
+                            products_list.append(f"- {row['Product / Device']} (Qty: {int(row['Qty'])})")
+                        products_str = "\n".join(products_list)
+                        
+                        # Generate title
+                        title_prompt = f"""Generate a short professional project title (max 8 words) for a smart home quotation with these products:
+{products_str}
+
+Client: {st.session_state.get('quo_client_name', 'Client')}
+Location: {st.session_state.get('quo_loc', 'UAE')}
+
+Return ONLY the title, nothing else."""
+                        
+                        title_response = chat_with_ai(title_prompt, [])
+                        st.session_state['quo_project_title'] = title_response.strip()
+                        
+                        # Generate description
+                        desc_prompt = f"""Generate a concise professional project description (2-3 sentences, max 150 words) for a smart home quotation with these products:
+{products_str}
+
+Client: {st.session_state.get('quo_client_name', 'Client')}
+Location: {st.session_state.get('quo_loc', 'UAE')}
+
+Return ONLY the description, nothing else. Focus on benefits and scope."""
+                        
+                        desc_response = chat_with_ai(desc_prompt, [])
+                        st.session_state['quo_project_description'] = desc_response.strip()
+                        
+                        st.success("✅ Project details generated successfully!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Error generating details: {str(e)}")
 
     st.session_state.num_entries = 1
 
@@ -580,7 +653,7 @@ def quotation_app():
         
         html_content = render_quotation_html({
             'company_name': _s.get('company_name', 'Newton Smart Home'),
-            'quotation_number': st.session_state.get('quo_no', datetime.today().strftime('QUO-%Y%m%d-001')),
+            'quotation_number': st.session_state.get('quo_no', f"Q{datetime.today().year}0001"),
             'quotation_date': datetime.today().strftime('%Y-%m-%d'),
             'valid_until': '',
             'status': 'Pending Approval',
@@ -590,9 +663,9 @@ def quotation_app():
             'client_address': st.session_state.get('quo_loc', ''),
             'client_city': '',
             'client_trn': '',
-            'project_title': '',
+            'project_title': st.session_state.get('quo_project_title', ''),
             'project_location': st.session_state.get('quo_loc', ''),
-            'project_scope': '',
+            'project_scope': st.session_state.get('quo_project_description', ''),
             'project_notes': '',
             'items': products,
             'subtotal': product_total,
@@ -603,8 +676,8 @@ def quotation_app():
             'bank_account': _s.get('bank_account', ''),
             'bank_iban': _s.get('bank_iban', ''),
             'bank_company': _s.get('company_name', 'Newton Smart Home'),
-            'sig_name': _s.get('default_prepared_by', ''),
-            'sig_role': _s.get('default_approved_by', ''),
+            'sig_name': st.session_state.get('quo_prepared_by', 'Mr Bukhry'),
+            'sig_role': st.session_state.get('quo_approved_by', 'Mr Mohammed'),
         }, template_name="newton_quotation_A4.html")
         return html_content
 
@@ -623,7 +696,7 @@ def quotation_app():
     # Client data
     client_name = st.session_state.get('quo_client_name', '')
     client_location = st.session_state.get('quo_loc', '')
-    quote_no = st.session_state.get('quo_no', datetime.today().strftime('QUO-%Y%m%d-001'))
+    quote_no = st.session_state.get('quo_no', f"Q{datetime.today().year}0001")
     phone_raw = st.session_state.get('quo_phone', '')
 
     # Generate HTML for download button

@@ -2,10 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
-from docx import Document
-from io import BytesIO
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Pt
+from pathlib import Path
 from utils.quotation_utils import render_quotation_html
 try:
     from utils import db as _db
@@ -302,8 +299,11 @@ def invoice_app():
     mode = st.radio("Invoice Creation Method", [
                     "From Quotation", "New Invoice"], horizontal=True, key="inv_mode")
 
-    today = datetime.today().strftime('%Y%m%d')
-    auto_no = f"INV-{today}-{str(len(records[records['type']=='i']) + 1).zfill(3)}"
+    # New numbering system: IYYYY#### (e.g., I20260001)
+    current_year = datetime.today().year
+    year_invoices = records[(records['type']=='i') & (records['number'].astype(str).str.startswith(f'I{current_year}'))]
+    next_seq = len(year_invoices) + 1
+    auto_no = f"I{current_year}{str(next_seq).zfill(4)}"
 
     # Prefill defaults from previously selected quotation (before rendering widgets)
     sel_default_name = ""
@@ -314,9 +314,9 @@ def invoice_app():
         if selected_q:
             try:
                 q_prefill = records[records["number"] == selected_q].iloc[0]
-                sel_default_name = q_prefill.get("client_name", "")
-                sel_default_loc = q_prefill.get("location", "")
-                sel_default_phone = q_prefill.get("phone", "")
+                sel_default_name = str(q_prefill.get("client_name", "") or "")
+                sel_default_loc = str(q_prefill.get("location", "") or "")
+                sel_default_phone = str(q_prefill.get("phone", "") or "")
             except Exception:
                 pass
     else:
@@ -329,10 +329,9 @@ def invoice_app():
         if current_q and current_q != last_q:
             try:
                 q_prefill = records[records["number"] == current_q].iloc[0]
-                st.session_state["inv_client"] = q_prefill.get(
-                    "client_name", "")
-                st.session_state["inv_loc"] = q_prefill.get("location", "")
-                st.session_state["inv_phone"] = q_prefill.get("phone", "")
+                st.session_state["inv_client"] = str(q_prefill.get("client_name", "") or "")
+                st.session_state["inv_loc"] = str(q_prefill.get("location", "") or "")
+                st.session_state["inv_phone"] = str(q_prefill.get("phone", "") or "")
             except Exception:
                 pass
             st.session_state["_last_q_selected"] = current_q
@@ -401,8 +400,31 @@ def invoice_app():
                 numbers = df["number"].astype(str).tolist()
                 labels = {}
                 for _, row in df.iterrows():
-                    labels[str(
-                        row["number"])] = f"{row['number']}  |  {row.get('client_name','')}  |  {phone_label_mask(row.get('phone',''))}"
+                    client = str(row.get('client_name', 'N/A'))
+                    phone_raw = row.get('phone', '')
+                    # Format phone: +971 50 299 2932 or 050-299-2932
+                    if phone_raw and str(phone_raw) != 'nan':
+                        # Handle float values from Excel (502992932.0 → 502992932)
+                        if isinstance(phone_raw, float):
+                            digits = str(int(phone_raw))
+                        else:
+                            digits = ''.join(filter(str.isdigit, str(phone_raw)))
+                        
+                        if digits.startswith('971') and len(digits) >= 12:
+                            # International format: +971 50 299 2932
+                            phone = f"+971 {digits[3:5]} {digits[5:8]} {digits[8:12]}"
+                        elif digits.startswith('05') and len(digits) == 10:
+                            # Local format: 050-299-2932
+                            phone = f"{digits[0:3]}-{digits[3:6]}-{digits[6:10]}"
+                        elif digits.startswith('5') and len(digits) == 9:
+                            # Add leading 0: 050-299-2932
+                            phone = f"0{digits[0:2]}-{digits[2:5]}-{digits[5:9]}"
+                        else:
+                            phone = digits if digits else 'N/A'
+                    else:
+                        phone = 'N/A'
+                    quo_num = str(row['number'])
+                    labels[quo_num] = f"{client} | {phone} | {quo_num}"
 
                 selected_q = st.selectbox(
                     "Select Quotation",
@@ -852,200 +874,195 @@ No cash refunds are provided under any circumstances."""
                     st.session_state.power_provider = provider
                     st.rerun()
 
-    # ======================================================
-    #      SAVE + EXPORT WORD
-    # ======================================================
-    def generate_word_invoice(template, data):
-        doc = Document(template)
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    for k, v in data.items():
-                        if k in cell.text:
-                            safe_v = "" if v is None else str(v)
-                            cell.text = cell.text.replace(k, safe_v)
-        buf = BytesIO()
-        doc.save(buf)
-        buf.seek(0)
-        return buf
+    # Editable delivery & installation text (persisted to session)
+    if 'inv_delivery_text' not in st.session_state:
+        default_delivery = (
+            "Estimated delivery time: 7–45 days from the date of receipt of the device supply payment.\n"
+            "Installation includes testing, commissioning, and programming.\n"
+            "Installation excludes the following:\n"
+            "- Power supply sources and any related failures or interruptions.\n"
+            "- Any structural or civil modifications required for installation works."
+        )
+        st.session_state.inv_delivery_text = default_delivery
 
+    st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+    delivery_text = st.text_area(
+        "Delivery & Installation Text:",
+        value=st.session_state.get('inv_delivery_text', ''),
+        height=160,
+        placeholder="Enter any specific delivery, installation exclusions or notes here...",
+        key="inv_delivery_text_input"
+    )
+    st.session_state.inv_delivery_text = delivery_text
+
+    # ======================================================
+    #      EXPORT - SIMPLIFIED (HTML Only + Save + Firebase)
+    # ======================================================
     st.markdown("---")
-    st.markdown('<div class="section-title">Export Invoice</div>',
+    st.markdown('<div class="section-title">Download Invoice</div>',
                 unsafe_allow_html=True)
 
-    # Recalculate for download (same logic as UI summary)
+    # Recalculate totals
     formatted_phone = format_phone_input(phone_raw) or phone_raw
     product_total = st.session_state.invoice_table["Line Total (AED)"].sum()
     installation_cost = st.session_state.get("install_cost_inv_value", 0.0)
     discount_value = st.session_state.get("disc_value_inv_value", 0.0)
     discount_percent = st.session_state.get("disc_percent_inv_value", 0.0)
-    percent_value = (product_total + installation_cost) * \
-        (discount_percent / 100)
+    percent_value = (product_total + installation_cost) * (discount_percent / 100)
     total_discount = percent_value + discount_value
     grand_total = (product_total + installation_cost) - total_discount
 
-    data = {
-        "{{client_name}}": client_name,
-        "{{invoice_no}}": invoice_no,
-        "{{client_location}}": client_location,
-        "{{client_phone}}": formatted_phone,
-        "{{total_products}}": f"{product_total:,.2f}",
-        "{{installation}}": f"{installation_cost:,.2f}",
-        "{{discount_value}}": f"{discount_value:,.2f}",
-        "{{discount_percent}}": f"{discount_percent:,.0f}",
-        "{{grand_total}}": f"{grand_total:,.2f}",
-    }
-
+    # Generate HTML Invoice
     try:
-        word_file = generate_word_invoice("data/invoice_template.docx", data)
-
-        clicked = st.download_button(
-            label="Download Invoice (Word)",
-            data=word_file,
-            file_name=f"Invoice_{invoice_no}.docx"
-        )
-
-        # Also provide HTML download using the A4 invoice template
-        try:
-            # Prepare normalized items for the renderer
-            raw_items = st.session_state.invoice_table.to_dict(
-                'records') if 'invoice_table' in st.session_state else []
-            norm_items = []
-            for r in raw_items:
-                try:
-                    qty_val = r.get('Qty')
-                    if qty_val is None or qty_val == '':
-                        qty = 0.0
-                    else:
-                        qty = float(qty_val)
-                except Exception:
-                    qty = 0.0
-                try:
-                    unit_price = float(r.get('Unit Price (AED)') or r.get(
-                        'Unit Price') or r.get('unit_price') or 0)
-                except Exception:
-                    unit_price = 0.0
-                try:
-                    total = float(r.get('Line Total (AED)')
-                                  or r.get('total') or qty * unit_price)
-                except Exception:
-                    total = qty * unit_price
-                item = {
-                    'description': r.get('Description') or r.get('Product / Device') or r.get('Product') or r.get('Device') or '',
-                    'qty': qty,
-                    'unit_price': unit_price,
-                    'total': total,
-                    'warranty': r.get('Warranty (Years)') or r.get('Warranty') or r.get('war_inv') or '',
-                    'ImagePath': None,
-                    'ImageBase64': r.get('ImageBase64') if 'ImageBase64' in r else None,
-                    'image': (r.get('image') if 'image' in r else ensure_data_url(r.get('ImageBase64') if 'ImageBase64' in r else None)),
-                }
-                norm_items.append(item)
-
-            # Calculate balance due: total - down_payment - previously_paid
-            down_payment = float(st.session_state.get(
-                'inv_down_payment', 0.0) or 0.0)
-            previously_paid = float(st.session_state.get(
-                'inv_previously_paid', 0.0) or 0.0)
-            balance_due = grand_total - down_payment - previously_paid
-
-            # Build payment terms HTML (dynamic list)
-            payment_terms_html = ""
-            payment_terms = st.session_state.get('payment_terms', [])
-            if payment_terms:
-                for term in payment_terms:
-                    if term.get('percent') and term.get('description'):
-                        payment_terms_html += f"<li>{term.get('percent'):.0f}% {term.get('description')}</li>"
-
-            # Build warranty HTML (format with dynamic shipping cost)
-            warranty_text = st.session_state.get('warranty_text', '')
-            warranty_shipping_cost = st.session_state.get(
-                'warranty_shipping_cost', 100.0)
-            warranty_html = warranty_text.format(
-                shipping_cost=warranty_shipping_cost)
-
-            # Get power provider for delivery & installation
-            power_provider = st.session_state.get(
-                'power_provider', 'ADDC – Abu Dhabi')
-
-            # Get project details
-            project_title = st.session_state.get('project_title', '')
-            project_description = st.session_state.get(
-                'project_description', '')
-
-            html_invoice = render_quotation_html({
-                'company_name': load_settings().get('company_name', 'Newton Smart Home'),
-                'quotation_number': invoice_no,
-                'quotation_date': datetime.today().strftime('%Y-%m-%d'),
-                'client_name': client_name,
-                'mobile': client_phone or phone_raw,
-                'client_address': client_location,
-                'items': norm_items,
-                'subtotal': product_total,
-                'Installation': installation_cost,
-                'total_amount': grand_total,
-                'down_payment': down_payment,
-                'previously_paid': previously_paid,
-                'project_title': project_title,
-                'project_description': project_description,
-                'balance_due': balance_due,
-                'payment_terms_html': payment_terms_html,
-                'warranty_html': warranty_html,
-                'power_provider': power_provider,
-                'bank_name': load_settings().get('bank_name', ''),
-                'bank_account': load_settings().get('bank_account', ''),
-                'bank_iban': load_settings().get('bank_iban', ''),
-                'sig_name': load_settings().get('default_prepared_by', ''),
-                'sig_role': load_settings().get('default_approved_by', ''),
-            }, template_name='newton_invoice_A4.html')
-            # Single-click download using JS auto-download helper
+        # Prepare items
+        raw_items = st.session_state.invoice_table.to_dict('records') if 'invoice_table' in st.session_state else []
+        norm_items = []
+        for r in raw_items:
             try:
-                st.download_button('Download Invoice (HTML)', html_invoice,
-                                   file_name=f"Invoice_{invoice_no}.html", mime='text/html')
+                qty_val = r.get('Qty')
+                qty = 0.0 if qty_val is None or qty_val == '' else float(qty_val)
             except Exception:
-                st.download_button('Download Invoice (HTML)', html_invoice,
-                                   file_name=f"Invoice_{invoice_no}.html", mime='text/html')
-        except Exception as e:
-            st.error(f"Unable to prepare invoice HTML: {e}")
+                qty = 0.0
+            try:
+                unit_price = float(r.get('Unit Price (AED)') or r.get('Unit Price') or r.get('unit_price') or 0)
+            except Exception:
+                unit_price = 0.0
+            try:
+                total = float(r.get('Line Total (AED)') or r.get('total') or qty * unit_price)
+            except Exception:
+                total = qty * unit_price
+            item = {
+                'description': r.get('Description') or r.get('Product / Device') or r.get('Product') or r.get('Device') or '',
+                'qty': qty,
+                'unit_price': unit_price,
+                'total': total,
+                'warranty': r.get('Warranty (Years)') or r.get('Warranty') or r.get('war_inv') or '',
+                'ImagePath': None,
+                'ImageBase64': r.get('ImageBase64') if 'ImageBase64' in r else None,
+                'image': (r.get('image') if 'image' in r else ensure_data_url(r.get('ImageBase64') if 'ImageBase64' in r else None)),
+            }
+            norm_items.append(item)
 
-        if clicked:
-            # Determine base_id linkage
+        # Calculate payment details
+        down_payment = float(st.session_state.get('inv_down_payment', 0.0) or 0.0)
+        previously_paid = float(st.session_state.get('inv_previously_paid', 0.0) or 0.0)
+        balance_due = grand_total - down_payment - previously_paid
+
+        # Build payment terms HTML
+        payment_terms_html = ""
+        payment_terms = st.session_state.get('payment_terms', [])
+        if payment_terms:
+            for term in payment_terms:
+                if term.get('percent') and term.get('description'):
+                    payment_terms_html += f"<li>{term.get('percent'):.0f}% {term.get('description')}</li>"
+
+        # Build warranty HTML
+        warranty_text = st.session_state.get('warranty_text', '')
+        warranty_shipping_cost = st.session_state.get('warranty_shipping_cost', 100.0)
+        warranty_html = warranty_text.format(shipping_cost=warranty_shipping_cost)
+
+        # Get additional details
+        power_provider = st.session_state.get('power_provider', 'ADDC – Abu Dhabi')
+        project_title = st.session_state.get('project_title', '')
+        project_description = st.session_state.get('project_description', '')
+
+        # Generate HTML
+        html_content = render_quotation_html({
+            'company_name': load_settings().get('company_name', 'Newton Smart Home'),
+            'quotation_number': invoice_no,
+            'quotation_date': datetime.today().strftime('%Y-%m-%d'),
+            'client_name': client_name,
+            'mobile': client_phone or phone_raw,
+            'client_address': client_location,
+            'project_location': client_location,
+            'items': norm_items,
+            'subtotal': product_total,
+            'Installation': installation_cost,
+            'total_amount': grand_total,
+            'down_payment': down_payment,
+            'previously_paid': previously_paid,
+            'project_title': project_title,
+            'project_description': project_description,
+            'balance_due': balance_due,
+            'payment_terms_html': payment_terms_html,
+            'warranty_html': warranty_html,
+            'power_provider': power_provider,
+            'delivery_text': st.session_state.get('inv_delivery_text', ''),
+            'bank_name': load_settings().get('bank_name', ''),
+            'bank_account': load_settings().get('bank_account', ''),
+            'bank_iban': load_settings().get('bank_iban', ''),
+            'sig_name': load_settings().get('default_prepared_by', ''),
+            'sig_role': load_settings().get('default_approved_by', ''),
+        }, template_name='newton_invoice_A4.html')
+
+        html_filename = f"Invoice_{invoice_no}.html"
+
+        # Single Download Button (HTML + Save Record + Firebase)
+        if st.download_button(
+            label="📥 Download Invoice (HTML)",
+            data=html_content,
+            file_name=html_filename,
+            mime='text/html',
+            use_container_width=True
+        ):
+            # Determine base_id
             base_id = None
             if mode == "From Quotation":
                 try:
-                    q_row = records[records["number"] == st.session_state.get(
-                        "q_select_inline")].iloc[0]
+                    q_row = records[records["number"] == st.session_state.get("q_select_inline")].iloc[0]
                     base_id = q_row.get("base_id", None)
                 except Exception:
                     base_id = None
             if not base_id:
-                # Generate a new base id for standalone invoices
                 today_id = datetime.today().strftime('%Y%m%d')
-                same_day = records[records["base_id"].astype(str).str.contains(
-                    today_id, na=False)] if not records.empty else pd.DataFrame()
+                same_day = records[records["base_id"].astype(str).str.contains(today_id, na=False)] if not records.empty else pd.DataFrame()
                 seq = len(same_day) + 1
                 base_id = f"{today_id}-{str(seq).zfill(3)}"
 
-            try:
-                save_record({
-                    "base_id": base_id,
-                    "date": datetime.today().strftime('%Y-%m-%d'),
-                    "type": "i",
-                    "number": invoice_no,
-                    "amount": grand_total,
-                    "client_name": client_name,
-                    "phone": phone_raw,
-                    "location": client_location,
-                    "note": st.session_state.get("q_select_inline") or ""
-                })
-                # Auto-add/update the customer so future quotations/invoices link to same record
-                upsert_customer_from_invoice(
-                    client_name, phone_raw, client_location)
-                st.success(f"✅ Saved to records as base {base_id}")
-            except Exception as e:
-                st.warning(f"⚠️ Downloaded, but failed to save record: {e}")
+            # Prepare invoice data
+            invoice_data = {
+                "base_id": base_id,
+                "date": datetime.today().strftime('%Y-%m-%d'),
+                "type": "Invoice",
+                "number": invoice_no,
+                "amount": grand_total,
+                "client_name": client_name,
+                "phone": phone_raw,
+                "location": client_location,
+                "note": st.session_state.get("q_select_inline") or "",
+                "products": norm_items,
+                "installation_cost": installation_cost,
+                "discount_value": discount_value,
+                "discount_percent": discount_percent,
+                "down_payment": down_payment,
+                "previously_paid": previously_paid,
+                "balance_due": balance_due,
+            }
+
+            # Save to records
+            save_record(invoice_data)
+
+            # Save to Firebase
+            if save_invoice_to_firebase is not None:
+                try:
+                    save_invoice_to_firebase(invoice_data)
+                except Exception as e:
+                    print(f"⚠️ Firebase warning: {str(e)}")
+
+            # Update customer
+            upsert_customer_from_invoice(client_name, phone_raw, client_location)
+
+            # Save HTML file locally
+            out_dir = Path('data') / 'exports'
+            out_dir.mkdir(parents=True, exist_ok=True)
+            html_path = out_dir / html_filename
+            with open(html_path, 'w', encoding='utf-8') as fh:
+                fh.write(html_content)
+
+            st.success(f"✅ Invoice saved! ID: {base_id}")
+
     except Exception as e:
-        st.error(f"❌ Unable to generate Word file: {e}")
+        st.error(f"❌ Error generating invoice: {e}")
 
 
 def load_settings():
@@ -1056,15 +1073,30 @@ def load_settings():
     except Exception:
         return {}
 
-    def save_record(record: dict):
-        os.makedirs("data", exist_ok=True)
-        path = "data/records.xlsx"
+
+def save_record(record: dict):
+    """حفظ سجل في records.xlsx (DB-first if available)"""
+    # Try DB first
+    if _db is not None:
         try:
-            df = pd.read_excel(path)
-            df.columns = [c.strip().lower() for c in df.columns]
+            _db.db_execute(
+                'INSERT INTO records(base_id, date, type, number, amount, client_name, phone, location, note) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                (record.get('base_id'), record.get('date'), record.get('type'), record.get('number'), 
+                 record.get('amount'), record.get('client_name'), record.get('phone'), record.get('location'), record.get('note'))
+            )
+            # Also save to Excel for backup
         except Exception:
-            df = pd.DataFrame(columns=[
-                "base_id", "date", "type", "number", "amount", "client_name", "phone", "location", "note"
-            ])
-        df = pd.concat([df, pd.DataFrame([record])], ignore_index=True)
-        df.to_excel(path, index=False)
+            pass
+    
+    # Excel fallback/backup
+    os.makedirs("data", exist_ok=True)
+    path = "data/records.xlsx"
+    try:
+        df = pd.read_excel(path)
+        df.columns = [c.strip().lower() for c in df.columns]
+    except Exception:
+        df = pd.DataFrame(columns=[
+            "base_id", "date", "type", "number", "amount", "client_name", "phone", "location", "note"
+        ])
+    df = pd.concat([df, pd.DataFrame([record])], ignore_index=True)
+    df.to_excel(path, index=False)

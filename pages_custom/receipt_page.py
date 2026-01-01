@@ -167,11 +167,11 @@ def receipt_app():
 
         base_id = inv["base_id"]
 
-        # Count previous receipts for same base ID
-        previous_r = len(
-            records[(records["base_id"] == base_id) & (records["type"] == "r")]) + 1
-
-        receipt_no = f"R-{today}-{base_id}-{previous_r}"
+        # New numbering system: RYYYY#### (e.g., R20260001)
+        current_year = datetime.today().year
+        year_receipts = records[(records['type']=='r') & (records['number'].astype(str).str.startswith(f'R{current_year}'))]
+        next_seq = len(year_receipts) + 1
+        receipt_no = f"R{current_year}{str(next_seq).zfill(4)}"
 
         st.markdown("---")
         st.markdown(

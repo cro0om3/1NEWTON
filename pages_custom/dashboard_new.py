@@ -15,80 +15,17 @@ def _app_icon_grid():
 
 
 def _apply_dashboard_theme():
-    st.markdown(
-        """
-        <style>
-        :root {
-            --dash-blue:var(--accent-blue);
-            --dash-blue-soft:#5ac8fa;
-            --dash-ink:var(--text-main);
-            --dash-sub:var(--text-muted);
-        }
-        #dashboard-icons .row {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap:18px;
-            margin: 16px 0 32px;
-        }
-        #dashboard-icons [data-testid="stButton"] > button {
-            width:100%;
-            white-space: pre-line;
-            text-align:center;
-            padding:28px 10px 22px;
-            border-radius:32px;
-            font-weight:700; font-size:18px;
-            box-shadow:0 8px 32px rgba(10,132,255,.10),0 24px 64px rgba(90,200,250,.12);
-            position:relative; overflow:hidden;
-            background:linear-gradient(135deg,rgba(255,255,255,.85) 0%,rgba(90,200,250,.18) 100%);
-            border:1.5px solid rgba(10,132,255,.10);
-            transition: transform .35s cubic-bezier(.4,0,.2,1), box-shadow .35s, background .35s;
-            backdrop-filter:blur(24px);
-        }
-        #dashboard-icons [data-testid="stButton"] > button::before {
-            content:""; position:absolute; inset:0;
-            background:linear-gradient(115deg,rgba(10,132,255,.10),rgba(90,200,250,.08));
-            opacity:0; transition:opacity .35s;
-        }
-        #dashboard-icons [data-testid="stButton"] > button:hover {
-            transform:translateY(-4px) scale(1.03);
-            box-shadow:0 16px 48px rgba(10,132,255,.18),0 32px 96px rgba(90,200,250,.18);
-            backdrop-filter:blur(32px);
-        }
-        #dashboard-icons [data-testid="stButton"] > button:hover::before {opacity:1;}
-        #dashboard-icons [data-testid="stButton"] > button:active {transform:translateY(-2px) scale(.995);}
-        #dashboard-icons [data-testid="stButton"] > button::first-line {font-size:38px; line-height:1.18;}
-        .section-title {
-            font-family:"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            font-size:24px; font-weight:500; letter-spacing:.012em;
-            margin: 18px 0 18px;
-            color:var(--text-muted);
-        }
-        .stTable th {
-            background: #0a1a3c !important;
-            color: var(--text-main) !important;
-            text-align: center !important;
-            font-size: 17px !important;
-            font-weight: 500 !important;
-            border: none !important;
-        }
-        .stTable td {
-            text-align: center !important;
-            font-size: 16px !important;
-        }
-        .project-table {
-            width: 100% !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Use the app's global theme and styles — avoid page-specific heavy overrides
+    # This keeps dashboard styling consistent with other pages.
+    return
 def _metric(title, value, subtitle=None):
+    # Use the shared hero-card style from the global theme for consistent appearance
     st.markdown(
         f"""
-        <div class="hero" style="background:#0a1a3c;border-radius:18px;padding:18px 32px;box-shadow:0 2px 16px 0 rgba(10,132,255,0.12);display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
+        <div class="hero-card" style="text-align:center; padding:18px 20px;">
             <div style="font-size:28px;font-weight:700;color:var(--text-main);">{value}</div>
             <div style="font-size:18px;font-weight:500;color:var(--text-main);">{title}</div>
-            <div style="font-size:15px;color:#5ac8fa;">{subtitle if subtitle else ""}</div>
+            <div style="font-size:15px;color:var(--accent);">{subtitle if subtitle else ""}</div>
         </div>
         """,
         unsafe_allow_html=True,

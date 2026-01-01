@@ -740,6 +740,7 @@
                                 </li>
                                 <li>
                                     <strong>Delivery &amp; Installation</strong>
+                                    {% if not delivery_text %}
                                     <ul style="margin: 2px 0 6px 0; padding-left: 16px;">
                                         <li>Estimated delivery time: 7–45 days from the date of receipt of the device supply payment.</li>
                                         <li>Installation includes testing, commissioning, and programming.</li>
@@ -750,6 +751,11 @@
                                             </ul>
                                         </li>
                                     </ul>
+                                    {% else %}
+                                    <ul style="margin: 2px 0 6px 0; padding-left: 16px;">
+                                        <li>{{ delivery_text | safe }}</li>
+                                    </ul>
+                                    {% endif %}
                                 </li>
                                 <li>
                                     <strong>Product Use &amp; Maintenance</strong>

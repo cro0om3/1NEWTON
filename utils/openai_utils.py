@@ -1,11 +1,116 @@
 """
 OpenAI ChatGPT Integration for Project Details Auto-Generation
-Generates project descriptions based on selected products
+and Full AI Assistant capabilities
 """
 
 import os
 import json
-from typing import Optional
+from typing import Optional, List, Dict
+
+
+# Store API key (should be moved to environment or settings)
+OPENAI_API_KEY = "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"
+
+
+def chat_with_ai(message: str, history: List[Dict] = None) -> str:
+    """
+    Chat with OpenAI GPT-4 AI Assistant
+    
+    Args:
+        message: User message
+        history: Chat history [{"role": "user/assistant", "content": "..."}]
+    
+    Returns:
+        AI response string
+    """
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        
+        messages = history or []
+        if not any(msg.get("role") == "system" for msg in messages):
+            messages.insert(0, {
+                "role": "system",
+                "content": "You are a helpful AI assistant for Newton Smart Home business. You help with quotations, invoices, document generation, data analysis, and any business-related tasks."
+            })
+        
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            max_tokens=2000,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+
+def generate_document(doc_type: str, context: Dict) -> str:
+    """
+    Generate documents using AI
+    
+    Args:
+        doc_type: Type of document (quotation, invoice, report, etc.)
+        context: Context data
+    
+    Returns:
+        Generated document text
+    """
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        
+        prompt = f"""Generate a professional {doc_type} document with the following details:
+        
+Context: {json.dumps(context, indent=2)}
+
+Create a complete, professional document ready to use."""
+        
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=3000
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+
+def analyze_file(file_content: str, file_type: str) -> str:
+    """
+    Analyze file content using AI
+    
+    Args:
+        file_content: Content of the file
+        file_type: Type of file (csv, excel, text, etc.)
+    
+    Returns:
+        Analysis report
+    """
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        
+        prompt = f"""Analyze this {file_type} file and provide insights:
+
+{file_content[:5000]}  # Limit content to avoid token limits
+
+Provide:
+1. Summary of data
+2. Key insights
+3. Recommendations"""
+        
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2000
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
 
 
 def generate_project_description(product_list: list, api_key: str) -> Optional[str]:
