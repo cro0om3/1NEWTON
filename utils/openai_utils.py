@@ -9,7 +9,7 @@ from typing import Optional, List, Dict
 
 
 # Store API key (should be moved to environment or settings)
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 def chat_with_ai(message: str, history: List[Dict] = None) -> str:

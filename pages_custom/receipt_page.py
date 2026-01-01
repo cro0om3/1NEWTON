@@ -169,7 +169,11 @@ def receipt_app():
 
         # New numbering system: RYYYY#### (e.g., R20260001)
         current_year = datetime.today().year
-        year_receipts = records[(records['type']=='r') & (records['number'].astype(str).str.startswith(f'R{current_year}'))]
+        if 'number_str' in records.columns:
+            number_str = records['number_str']
+        else:
+            number_str = records['number'].astype(str)
+        year_receipts = records[(records['type'] == 'r') & (number_str.str.startswith(f'R{current_year}'))]
         next_seq = len(year_receipts) + 1
         receipt_no = f"R{current_year}{str(next_seq).zfill(4)}"
 

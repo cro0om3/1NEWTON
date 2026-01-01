@@ -1023,7 +1023,7 @@ No cash refunds are provided under any circumstances."""
             invoice_data = {
                 "base_id": base_id,
                 "date": datetime.today().strftime('%Y-%m-%d'),
-                "type": "Invoice",
+                "type": "i",
                 "number": invoice_no,
                 "amount": grand_total,
                 "client_name": client_name,
