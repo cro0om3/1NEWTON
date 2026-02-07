@@ -4,6 +4,12 @@ data/~$*
 # Firebase credentials (never commit!)
 data/firebase_credentials.json
 
+# Supabase / DB connection (never commit!)
+data/supabase_db_url.txt
+data/streamlit_secrets_paste.toml
+.env
+.env.local
+
 # You can uncomment the following lines to avoid committing heavy generated assets
 # data/product_images/
 # data/exports/

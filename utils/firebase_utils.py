@@ -16,28 +16,43 @@ import streamlit as st
 _firebase_initialized = False
 
 def init_firebase():
-    """تهيئة Firebase مع Service Account Credentials"""
+    """تهيئة Firebase مع Service Account Credentials (من ملف أو من st.secrets)"""
     global _firebase_initialized
-    
+
     if _firebase_initialized:
-        return
-    
+        return True
+
     try:
-        # مسار credentials
-        cred_path = Path(__file__).parent.parent / "data" / "firebase_credentials.json"
-        
-        if not cred_path.exists():
-            st.error("❌ ملف Firebase credentials غير موجود")
-            return False
-        
-        # تهيئة Firebase
-        cred = credentials.Certificate(str(cred_path))
+        cred = None
+        # 1) من Streamlit Secrets (مهم على Streamlit Cloud)
+        _firebase_keys = (
+            "type", "project_id", "private_key_id", "private_key",
+            "client_email", "client_id", "auth_uri", "token_uri",
+            "auth_provider_x509_cert_url", "client_x509_cert_url"
+        )
+        if hasattr(st, "secrets") and isinstance(st.secrets, dict):
+            firebase_dict = st.secrets.get("firebase")
+            if firebase_dict and isinstance(firebase_dict, dict):
+                cred = credentials.Certificate(dict(firebase_dict))
+            elif st.secrets.get("type") == "service_account":
+                cred = credentials.Certificate({
+                    k: v for k, v in st.secrets.items()
+                    if k in _firebase_keys
+                })
+
+        # 2) من ملف محلي
+        if cred is None:
+            cred_path = Path(__file__).parent.parent / "data" / "firebase_credentials.json"
+            if not cred_path.exists():
+                return False
+            cred = credentials.Certificate(str(cred_path))
+
         firebase_admin.initialize_app(cred)
-        
         _firebase_initialized = True
         return True
     except Exception as e:
-        st.error(f"❌ خطأ في تهيئة Firebase: {str(e)}")
+        if hasattr(st, "error"):
+            st.error(f"❌ خطأ في تهيئة Firebase: {str(e)}")
         return False
 
 def get_firestore_client():
