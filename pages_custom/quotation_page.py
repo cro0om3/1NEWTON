@@ -577,10 +577,13 @@ Return ONLY the description, nothing else. Focus on benefits and scope."""
         installation_cost_val = st.session_state.get("install_cost_quo_value", 0.0)
         discount_value_val = st.session_state.get("disc_value_quo_value", 0.0)
         discount_percent_val = st.session_state.get("disc_percent_quo_value", 0.0)
+        vat_percent_val = st.session_state.get("vat_percent_quo_value", 5.0)
 
         percent_value = (product_total + installation_cost_val) * (discount_percent_val / 100)
         total_discount = percent_value + discount_value_val
-        grand_total = (product_total + installation_cost_val) - total_discount
+        taxable_amount = (product_total + installation_cost_val) - total_discount
+        vat_amount = taxable_amount * (vat_percent_val / 100)
+        grand_total = taxable_amount + vat_amount
 
         st.markdown(
             """
@@ -597,12 +600,16 @@ Return ONLY the description, nothing else. Focus on benefits and scope."""
                     <span style='font-weight:600;color:#6e6e73;'>Discount</span>
                     <span style='font-weight:700;color:#1d1d1f;'>-{:,.2f} AED</span>
                 </div>
+                <div style='display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.06);'>
+                    <span style='font-weight:600;color:#6e6e73;'>VAT ({:.2f}%)</span>
+                    <span style='font-weight:700;color:#1d1d1f;'>{:,.2f} AED</span>
+                </div>
                 <div style='display:flex;justify-content:space-between;padding:15px 0;background:rgba(0,0,0,.02);margin-top:8px;border-radius:8px;padding-left:12px;padding-right:12px;'>
                     <span style='font-weight:700;font-size:16px;color:#1d1d1f;'>TOTAL AMOUNT</span>
                     <span style='font-weight:700;font-size:18px;color:#1d1d1f;'>{:,.2f} AED</span>
                 </div>
             </div>
-            """.format(product_total, installation_cost_val, total_discount, grand_total),
+            """.format(product_total, installation_cost_val, total_discount, vat_percent_val, vat_amount, grand_total),
             unsafe_allow_html=True,
         )
 
@@ -625,6 +632,8 @@ Return ONLY the description, nothing else. Focus on benefits and scope."""
         with cD2:
             discount_percent = st.number_input("Discount %", min_value=0.0, max_value=100.0, key="disc_percent_quo")
             st.session_state["disc_percent_quo_value"] = discount_percent
+        vat_percent = st.number_input("VAT %", min_value=0.0, max_value=100.0, value=5.0, key="vat_percent_quo")
+        st.session_state["vat_percent_quo_value"] = vat_percent
 
     # =========================
     # EXPORT - HTML Direct (Simplified)
@@ -647,9 +656,12 @@ Return ONLY the description, nothing else. Focus on benefits and scope."""
         installation_cost_val = float(st.session_state.get('install_cost_quo_value', 0.0) or 0.0)
         discount_value_val = float(st.session_state.get("disc_value_quo_value", 0.0) or 0.0)
         discount_percent_val = float(st.session_state.get("disc_percent_quo_value", 0.0) or 0.0)
+        vat_percent_val = float(st.session_state.get("vat_percent_quo_value", 5.0) or 0.0)
         percent_value = (product_total + installation_cost_val) * (discount_percent_val / 100)
         total_discount = percent_value + discount_value_val
-        grand_total = (product_total + installation_cost_val) - total_discount
+        taxable_amount = (product_total + installation_cost_val) - total_discount
+        vat_amount = taxable_amount * (vat_percent_val / 100)
+        grand_total = taxable_amount + vat_amount
         
         html_content = render_quotation_html({
             'company_name': _s.get('company_name', 'Newton Smart Home'),
@@ -670,7 +682,8 @@ Return ONLY the description, nothing else. Focus on benefits and scope."""
             'items': products,
             'subtotal': product_total,
             'Installation': installation_cost_val,
-            'vat_amount': 0,
+            'vat_amount': vat_amount,
+            'vat_percent': vat_percent_val,
             'total_amount': grand_total,
             'bank_name': _s.get('bank_name', ''),
             'bank_account': _s.get('bank_account', ''),
@@ -689,9 +702,12 @@ Return ONLY the description, nothing else. Focus on benefits and scope."""
     installation_cost_val = st.session_state.get("install_cost_quo_value", 0.0)
     discount_value_val = st.session_state.get("disc_value_quo_value", 0.0)
     discount_percent_val = st.session_state.get("disc_percent_quo_value", 0.0)
+    vat_percent_val = st.session_state.get("vat_percent_quo_value", 5.0)
     percent_value = (product_total + installation_cost_val) * (discount_percent_val / 100)
     total_discount = percent_value + discount_value_val
-    grand_total = (product_total + installation_cost_val) - total_discount
+    taxable_amount = (product_total + installation_cost_val) - total_discount
+    vat_amount = taxable_amount * (vat_percent_val / 100)
+    grand_total = taxable_amount + vat_amount
 
     # Client data
     client_name = st.session_state.get('quo_client_name', '')

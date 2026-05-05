@@ -683,6 +683,10 @@ body {
                         <span>Installation & Operation </span>
                         <span class="value">{{ (Installation | default(0)) | currency }}</span>
                     </div>
+                    <div class="totals-row label">
+                        <span>VAT ({{ vat_percent | default(5) }}%)</span>
+                        <span class="value">{{ (vat_amount | default(0)) | currency }}</span>
+                    </div>
                     <div class="totals-row total">
                         <span>Total Amount</span>
                         <span class="value">{{ total_amount | currency }}</span>

@@ -587,11 +587,14 @@ def invoice_app():
         installation_cost = st.session_state.get("install_cost_inv_value", 0.0)
         discount_value = st.session_state.get("disc_value_inv_value", 0.0)
         discount_percent = st.session_state.get("disc_percent_inv_value", 0.0)
+        vat_percent = st.session_state.get("vat_percent_inv_value", 5.0)
 
         percent_value = (product_total + installation_cost) * \
             (discount_percent / 100)
         total_discount = percent_value + discount_value
-        grand_total = (product_total + installation_cost) - total_discount
+        taxable_amount = (product_total + installation_cost) - total_discount
+        vat_amount = taxable_amount * (vat_percent / 100)
+        grand_total = taxable_amount + vat_amount
 
         st.markdown("""
         <div style='background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;'>
@@ -607,12 +610,16 @@ def invoice_app():
                 <span style='font-weight:600;color:var(--text-soft);'>Discount</span>
                 <span style='font-weight:700;color:var(--text);'>-{:,.2f} AED</span>
             </div>
+            <div style='display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-soft);'>
+                <span style='font-weight:600;color:var(--text-soft);'>VAT ({:.2f}%)</span>
+                <span style='font-weight:700;color:var(--text);'>{:,.2f} AED</span>
+            </div>
             <div style='display:flex;justify-content:space-between;padding:15px 0;background:var(--bg-input);margin-top:8px;border-radius:8px;padding-left:12px;padding-right:12px;'>
                 <span style='font-weight:700;font-size:16px;color:var(--text);'>TOTAL AMOUNT</span>
                 <span style='font-weight:700;font-size:18px;color:var(--text);'>{:,.2f} AED</span>
             </div>
         </div>
-        """.format(product_total, installation_cost, total_discount, grand_total), unsafe_allow_html=True)
+        """.format(product_total, installation_cost, total_discount, vat_percent, vat_amount, grand_total), unsafe_allow_html=True)
 
     with col_right:
         st.markdown(
@@ -635,6 +642,10 @@ def invoice_app():
             discount_percent = st.number_input(
                 "Discount %", min_value=0.0, max_value=100.0, key="disc_percent_inv")
             st.session_state["disc_percent_inv_value"] = discount_percent
+
+        vat_percent = st.number_input(
+            "VAT %", min_value=0.0, max_value=100.0, value=5.0, key="vat_percent_inv")
+        st.session_state["vat_percent_inv_value"] = vat_percent
 
     # ======================================================
     #      PAYMENT TERMS
@@ -908,9 +919,12 @@ No cash refunds are provided under any circumstances."""
     installation_cost = st.session_state.get("install_cost_inv_value", 0.0)
     discount_value = st.session_state.get("disc_value_inv_value", 0.0)
     discount_percent = st.session_state.get("disc_percent_inv_value", 0.0)
+    vat_percent = st.session_state.get("vat_percent_inv_value", 5.0)
     percent_value = (product_total + installation_cost) * (discount_percent / 100)
     total_discount = percent_value + discount_value
-    grand_total = (product_total + installation_cost) - total_discount
+    taxable_amount = (product_total + installation_cost) - total_discount
+    vat_amount = taxable_amount * (vat_percent / 100)
+    grand_total = taxable_amount + vat_amount
 
     # Generate HTML Invoice
     try:
@@ -978,6 +992,9 @@ No cash refunds are provided under any circumstances."""
             'items': norm_items,
             'subtotal': product_total,
             'Installation': installation_cost,
+            'discount': total_discount,
+            'vat_amount': vat_amount,
+            'vat_percent': vat_percent,
             'total_amount': grand_total,
             'down_payment': down_payment,
             'previously_paid': previously_paid,
@@ -1034,6 +1051,8 @@ No cash refunds are provided under any circumstances."""
                 "installation_cost": installation_cost,
                 "discount_value": discount_value,
                 "discount_percent": discount_percent,
+                "vat_percent": vat_percent,
+                "vat_amount": vat_amount,
                 "down_payment": down_payment,
                 "previously_paid": previously_paid,
                 "balance_due": balance_due,
